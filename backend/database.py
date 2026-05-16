@@ -1,10 +1,19 @@
+import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Date, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-DATABASE_URL = "sqlite:///./he_colbeef.db"
+# Usar PostgreSQL en Railway o SQLite local
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///./he_colbeef.db"
+)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Railway usa postgresql:// pero SQLAlchemy necesita postgresql+psycopg2://
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -44,11 +53,10 @@ class Registro(Base):
     tecnico_id   = Column(Integer, ForeignKey("tecnicos.id"), nullable=False)
     fecha        = Column(Date, nullable=False)
     es_festivo   = Column(Boolean, default=False)
-    entrada      = Column(String, nullable=True)   # HH:MM
-    salida       = Column(String, nullable=True)   # HH:MM
-    descanso     = Column(Float, default=0.0)      # minutos
+    entrada      = Column(String, nullable=True)
+    salida       = Column(String, nullable=True)
+    descanso     = Column(Float, default=0.0)
     observacion  = Column(String, nullable=True)
-    # Calculados (se guardan para referencia)
     horas_trab   = Column(Float, default=0.0)
     hed          = Column(Float, default=0.0)
     hen          = Column(Float, default=0.0)
@@ -66,11 +74,9 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
-    # Config por defecto
     if not db.query(Configuracion).first():
         db.add(Configuracion())
 
-    # Observaciones por defecto
     if not db.query(Observacion).first():
         obs_default = [
             ("DESCANSO",                  0.0, False),
@@ -94,29 +100,28 @@ def init_db():
         for nombre, horas, ot in obs_default:
             db.add(Observacion(nombre=nombre, horas_fijas=horas, cuenta_ot=ot))
 
-    # Técnicos iniciales
     if not db.query(Tecnico).first():
         tecnicos_default = [
-            ("Alberto Giraldo Muñoz",              "91299928",   "Técnico Locativo",                          1750905),
-            ("Angel Manuel Vega Serrano",           "1095947101", "Soldador",                                  2000000),
-            ("Brayan Alberto Pimiento Caballero",   "1005372215", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Edgar Andres Florez Villamizar",      "1098760784", "Planeador Táctico de Mantenimiento",        2100000),
-            ("Edison Geovanny Leon Ortiz",          "1007770027", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Erik Yasin Florez Parada",            "1098806507", "Técnico Eléctrico",                         1750905),
-            ("Jairo Andres Lopez Murillo",          "1099365824", "Subcoordinador de Gestión de Activos",      2700000),
-            ("Jhon Michael Velasco Castro",         "1095828837", "Supervisor de Mantenimiento",               2528000),
-            ("Jhonnys de Jesús Mena Bonett",        "1118865973", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Johan Andres Perez de la Rosa",       "1065872598", "Técnico de Mantenimiento Industrial",       1750905),
-            ("John Jairo Solano Jaimes",            "1099364262", "Supervisor de Mantenimiento",               2528557),
-            ("Juan Camilo Nieves Vergara",          "1102389527", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Ludwin Leonel Duran Leon",            "1097611606", "Técnico Frigorista",                        2000000),
-            ("Miguel Alexander Gutierrez Hernandez","91514544",   "Auxiliar Administrativo",                   1750905),
-            ("Nicolas Ardila Rosas",                "1095925464", "Técnico de Gestión de Activos",             1750905),
-            ("Oscar Johel Cordero Grazt",           "1005289022", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Sergio Enrique Torra Bustos",         "1098697161", "Supervisor de Mantenimiento",               2200000),
-            ("Yan Sebastian Mora Rondon",           "1098764768", "Técnico Frigorista",                        1750905),
-            ("Yeison Jose Pereira Brochero",        "1007589766", "Técnico de Mantenimiento Industrial",       1750905),
-            ("Jahir Sanchez",                       "1000000000", "Coordinador",                               3000000),
+            ("Alberto Giraldo Muñoz",              "91299928",   "Técnico Locativo",                       1750905),
+            ("Angel Manuel Vega Serrano",           "1095947101", "Soldador",                               2000000),
+            ("Brayan Alberto Pimiento Caballero",   "1005372215", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Edgar Andres Florez Villamizar",      "1098760784", "Planeador Táctico de Mantenimiento",     2100000),
+            ("Edison Geovanny Leon Ortiz",          "1007770027", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Erik Yasin Florez Parada",            "1098806507", "Técnico Eléctrico",                      1750905),
+            ("Jairo Andres Lopez Murillo",          "1099365824", "Subcoordinador de Gestión de Activos",   2700000),
+            ("Jhon Michael Velasco Castro",         "1095828837", "Supervisor de Mantenimiento",            2528000),
+            ("Jhonnys de Jesús Mena Bonett",        "1118865973", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Johan Andres Perez de la Rosa",       "1065872598", "Técnico de Mantenimiento Industrial",    1750905),
+            ("John Jairo Solano Jaimes",            "1099364262", "Supervisor de Mantenimiento",            2528557),
+            ("Juan Camilo Nieves Vergara",          "1102389527", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Ludwin Leonel Duran Leon",            "1097611606", "Técnico Frigorista",                     2000000),
+            ("Miguel Alexander Gutierrez Hernandez","91514544",   "Auxiliar Administrativo",                1750905),
+            ("Nicolas Ardila Rosas",                "1095925464", "Técnico de Gestión de Activos",          1750905),
+            ("Oscar Johel Cordero Grazt",           "1005289022", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Sergio Enrique Torra Bustos",         "1098697161", "Supervisor de Mantenimiento",            2200000),
+            ("Yan Sebastian Mora Rondon",           "1098764768", "Técnico Frigorista",                     1750905),
+            ("Yeison Jose Pereira Brochero",        "1007589766", "Técnico de Mantenimiento Industrial",    1750905),
+            ("Jahir Sanchez",                       "1000000000", "Coordinador",                            3000000),
         ]
         for nombre, cedula, cargo, sueldo in tecnicos_default:
             db.add(Tecnico(nombre=nombre, cedula=cedula, cargo=cargo, sueldo=sueldo))
