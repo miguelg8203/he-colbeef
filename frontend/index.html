@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HE · Colbeef - Soatec</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <span class="brand-tag">gestor</span>
+    <span class="brand-he">HE/</span>
+    <span class="brand-title">Horas Extras · Colbeef - Soatec</span>
+  </div>
+  <nav class="nav" id="main-nav">
+    <button class="nv active" data-view="tecnicos">👥 Técnicos</button>
+    <button class="nv" data-view="planilla">📋 Planilla</button>
+    <button class="nv" data-view="resumen">💰 Resumen HE</button>
+    <button class="nv" data-view="config">⚙️ Config</button>
+  </nav>
+</header>
+
+<!-- VIEWS -->
+<main class="main">
+
+  <!-- ══ TÉCNICOS ══ -->
+  <section id="view-tecnicos" class="view active">
+    <div class="view-header">
+      <div>
+        <h2>Técnicos</h2>
+        <p class="sub">Gestión del equipo</p>
+      </div>
+      <button class="btn" onclick="UI.openModal('modal-tecnico')">+ Nuevo técnico</button>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+      <input type="text" id="tec-search" placeholder="Buscar técnico..." oninput="TEC.filtrar()"
+        style="max-width:360px;flex:1;">
+      <div style="text-align:center;">
+        <img src="/img/marca_mg.png" alt="Miguel Gutierrez"
+          style="height:64px;object-fit:contain;border-radius:8px;opacity:0.92;">
+      </div>
+    </div>
+
+    <div class="cards-grid" id="tec-grid"></div>
+  </section>
+
+  <!-- ══ PLANILLA ══ -->
+  <section id="view-planilla" class="view">
+    <div class="view-header">
+      <div>
+        <h2 id="plan-titulo">Planilla</h2>
+        <p class="sub" id="plan-periodo"></p>
+      </div>
+      <div class="header-actions">
+        <select id="plan-tec-select" onchange="PLAN.cargar()">
+          <option value="">— Seleccionar técnico —</option>
+        </select>
+        <div class="period-nav">
+          <button class="btn-g" onclick="PLAN.cambiarPeriodo(-1)">‹</button>
+          <span id="plan-period-lbl" class="period-lbl"></span>
+          <button class="btn-g" onclick="PLAN.cambiarPeriodo(1)">›</button>
+        </div>
+        <button class="btn-outline" id="btn-pdf-tec" onclick="PLAN.exportarPDF()" style="display:none">
+          ⬇ PDF
+        </button>
+      </div>
+    </div>
+
+    <div id="plan-empty" class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>Selecciona un técnico para ver su planilla</p>
+    </div>
+
+    <div id="plan-table-wrap" style="display:none">
+      <div class="legend">
+        <span class="leg-item"><span class="dot dom"></span>Domingo</span>
+        <span class="leg-item"><span class="dot fest"></span>Festivo</span>
+        <span class="leg-item"><span class="dot pos"></span>HE positivo</span>
+        <span class="leg-item"><span class="dot neg"></span>HE negativo</span>
+      </div>
+      <div class="table-wrap">
+        <table class="planilla-table" id="plan-table">
+          <thead>
+            <tr>
+              <th title="Festivo">F</th>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Desc.(h)</th>
+              <th>Observación</th>
+              <th>H.Trab</th>
+              <th class="ot-col">OT Sem</th>
+              <th>HED</th>
+              <th>HEN</th>
+              <th>RNO</th>
+              <th>HEFD</th>
+              <th>HEFN</th>
+              <th>RFD</th>
+              <th>RFN</th>
+            </tr>
+          </thead>
+          <tbody id="plan-body"></tbody>
+          <tfoot id="plan-foot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ RESUMEN HE ══ -->
+  <section id="view-resumen" class="view">
+    <div class="view-header">
+      <div>
+        <h2>Resumen Horas Extras</h2>
+        <p class="sub" id="res-periodo"></p>
+      </div>
+      <div class="header-actions">
+        <div class="period-nav">
+          <button class="btn-g" onclick="RES.cambiarPeriodo(-1)">‹</button>
+          <span id="res-period-lbl" class="period-lbl"></span>
+          <button class="btn-g" onclick="RES.cambiarPeriodo(1)">›</button>
+        </div>
+        <button class="btn" onclick="RES.cargar()">🔄 Recalcular</button>
+        <button class="btn-outline" onclick="RES.exportarPDF()">⬇ PDF Resumen</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="res-table" id="res-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Cargo</th>
+            <th>Sueldo</th>
+            <th>HED</th><th>HEN</th><th>RNO</th>
+            <th>HEFD</th><th>HEFN</th><th>RFD</th><th>RFN</th>
+            <th>Neto a Pagar</th>
+          </tr>
+        </thead>
+        <tbody id="res-body"></tbody>
+        <tfoot id="res-foot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ CONFIG ══ -->
+  <section id="view-config" class="view">
+    <div class="view-header">
+      <h2>Configuración</h2>
+    </div>
+
+    <div class="config-grid">
+      <!-- Config global -->
+      <div class="card">
+        <div class="card-title">⚙️ Configuración general</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Horas semanales</label>
+            <input type="number" id="cfg-horas" min="36" max="48" step="1">
+          </div>
+          <div class="form-group">
+            <label>Inicio diurno</label>
+            <input type="time" id="cfg-inicio">
+          </div>
+          <div class="form-group">
+            <label>Fin diurno</label>
+            <input type="time" id="cfg-fin">
+          </div>
+        </div>
+        <p class="hint" id="cfg-hint"></p>
+        <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
+      </div>
+
+      <!-- Observaciones -->
+      <div class="card">
+        <div class="card-title">📋 Observaciones</div>
+        <div class="obs-add-row">
+          <input type="text" id="obs-nombre" placeholder="Nueva observación...">
+          <input type="number" id="obs-horas" placeholder="H.fijas" min="0" max="24" step="0.5" style="width:90px">
+          <label class="check-label">
+            <input type="checkbox" id="obs-ot"> Cuenta OT
+          </label>
+          <button class="btn" onclick="CFG.addObs()">+ Agregar</button>
+        </div>
+        <div class="obs-header">
+          <span>Nombre</span><span>H.Fijas</span><span>OT</span><span></span>
+        </div>
+        <div id="obs-list"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══ MODAL TÉCNICO ══ -->
+<div class="modal-overlay" id="modal-tecnico">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modal-tec-titulo">Nuevo técnico</span>
+      <button class="modal-close" onclick="UI.closeModal('modal-tecnico')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tec-id">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="tec-nombre" placeholder="Ej. John Jairo Solano Jaimes">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cédula</label>
+          <input type="text" id="tec-cedula" placeholder="1099364262">
+        </div>
+        <div class="form-group">
+          <label>Sueldo base</label>
+          <input type="number" id="tec-sueldo" placeholder="1750905" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <input type="text" id="tec-cargo" placeholder="Técnico de Mantenimiento Industrial">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-g" onclick="UI.closeModal('modal-tecnico')">Cancelar</button>
+      <button class="btn" onclick="TEC.guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CONFIRMAR ══ -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span>Confirmar</span>
+      <button class="modal-close" onclick="UI.closeModal('modal-confirm')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-g" onclick="UI.closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="/js/app.js"></script>
+<script src="/js/tecnicos.js"></script>
+<script src="/js/planilla.js"></script>
+<script src="/js/resumen.js"></script>
+<script src="/js/config.js"></script>
+</body>
+</html>
