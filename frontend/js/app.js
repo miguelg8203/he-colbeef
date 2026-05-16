@@ -1,6 +1,8 @@
 // ── API base ──────────────────────────────────────────────────────────────────
 const API = {
-  base: "http://127.0.0.1:8000",
+  base: window.location.origin === "null" || window.location.hostname === "127.0.0.1" 
+    ? "http://127.0.0.1:8000" 
+    : window.location.origin,
 
   async get(path) {
     const r = await fetch(this.base + path);
