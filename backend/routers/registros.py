@@ -19,7 +19,7 @@ def _get_obs_map(db):
     return {o.nombre.upper(): {"horas_fijas": o.horas_fijas, "cuenta_ot": o.cuenta_ot} for o in obs}
 
 
-def _min_acum_semana(tecnico_id: int, fecha: date, db: Session) -> float:
+def _min_acum_semana(tecnico_id, fecha, db):
     lunes = get_lunes(fecha)
     total = 0.0
     d = lunes
@@ -31,12 +31,11 @@ def _min_acum_semana(tecnico_id: int, fecha: date, db: Session) -> float:
     return total
 
 
-def _es_culto_semana(tecnico_id: int, fecha: date, db: Session) -> bool:
+def _es_culto_semana(tecnico_id, fecha, db):
     lunes = get_lunes(fecha)
     sabado = lunes + timedelta(days=5)
     r = db.query(Registro).filter(
-        Registro.tecnico_id == tecnico_id,
-        Registro.fecha == sabado
+        Registro.tecnico_id == tecnico_id, Registro.fecha == sabado
     ).first()
     return r is not None and (r.observacion or "").upper() == "DESCANSO POR CULTO"
 
@@ -85,21 +84,10 @@ def guardar(tecnico_id: int, r: RegistroIn, db: Session = Depends(get_db)):
     return obj
 
 
-@router.delete("/{tecnico_id}/{fecha}")
-def eliminar(tecnico_id: int, fecha: date, db: Session = Depends(get_db)):
-    obj = db.query(Registro).filter(
-        Registro.tecnico_id == tecnico_id, Registro.fecha == fecha
-    ).first()
-    if obj:
-        db.delete(obj); db.commit()
-    return {"ok": True}
-
-
 @router.post("/{tecnico_id}/manual")
 def guardar_manual(tecnico_id: int, data: dict, db: Session = Depends(get_db)):
-    """Guardar un valor HE manualmente para un día específico."""
-    from datetime import date as date_type
-    fecha  = date_type.fromisoformat(data["fecha"])
+    """Guardar un valor HE manualmente."""
+    fecha  = date.fromisoformat(str(data["fecha"]))
     campo  = data["campo"]
     valor  = float(data["valor"])
 
@@ -113,9 +101,21 @@ def guardar_manual(tecnico_id: int, data: dict, db: Session = Depends(get_db)):
     ).first()
 
     if not obj:
-        obj = Registro(tecnico_id=tecnico_id, fecha=fecha)
+        obj = Registro(tecnico_id=tecnico_id, fecha=fecha,
+                       es_festivo=False, descanso=0, horas_trab=0,
+                       hed=0, hen=0, rno=0, hefd=0, hefn=0, rfd=0, rfn=0)
         db.add(obj)
 
     setattr(obj, campo, valor)
     db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{tecnico_id}/{fecha}")
+def eliminar(tecnico_id: int, fecha: date, db: Session = Depends(get_db)):
+    obj = db.query(Registro).filter(
+        Registro.tecnico_id == tecnico_id, Registro.fecha == fecha
+    ).first()
+    if obj:
+        db.delete(obj); db.commit()
     return {"ok": True}
