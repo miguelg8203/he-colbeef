@@ -93,3 +93,29 @@ def eliminar(tecnico_id: int, fecha: date, db: Session = Depends(get_db)):
     if obj:
         db.delete(obj); db.commit()
     return {"ok": True}
+
+
+@router.post("/{tecnico_id}/manual")
+def guardar_manual(tecnico_id: int, data: dict, db: Session = Depends(get_db)):
+    """Guardar un valor HE manualmente para un día específico."""
+    from datetime import date as date_type
+    fecha  = date_type.fromisoformat(data["fecha"])
+    campo  = data["campo"]
+    valor  = float(data["valor"])
+
+    campos_validos = ["hed","hen","rno","hefd","hefn","rfd","rfn"]
+    if campo not in campos_validos:
+        raise HTTPException(400, "Campo no válido")
+
+    obj = db.query(Registro).filter(
+        Registro.tecnico_id == tecnico_id,
+        Registro.fecha == fecha
+    ).first()
+
+    if not obj:
+        obj = Registro(tecnico_id=tecnico_id, fecha=fecha)
+        db.add(obj)
+
+    setattr(obj, campo, valor)
+    db.commit()
+    return {"ok": True}
