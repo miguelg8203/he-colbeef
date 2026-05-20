@@ -1,273 +1,294 @@
 """
-calculos.py
-Lógica de clasificación de horas extras según Ley 2101/2021
-Colombia: diurno 06:00-19:00, nocturno 19:00-06:00
-Jornada: 44h semanales (6 días)
+calculos.py - Lógica exacta del Excel HE Colbeef
+Fórmulas traducidas directamente del Excel original.
+Columnas: B=esFestivo, E=fecha, F=entrada, G=salida, H=descanso(horas)
+DIASEM(E,2): 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab, 7=Dom
 """
 from datetime import date, timedelta
 from typing import List, Dict, Any
 
 
-# ── Utilidades de tiempo ──────────────────────────────────────────────────────
-
 def to_min(t: str) -> int:
     if not t: return 0
     h, m = t.split(":")
-    return int(h) * 60 + int(m)
+    return int(h)*60 + int(m)
 
-
-def overlap(a1: int, a2: int, b1: int, b2: int) -> int:
-    return max(0, min(a2, b2) - max(a1, b1))
-
-
-def split_dn(inicio: int, fin: int, ds: int, de: int):
-    """
-    Divide [inicio, fin) en minutos diurnos y nocturnos.
-    fin puede ser >= 1440 si cruza medianoche.
-    ds = inicio diurno (ej. 360), de = fin diurno (ej. 1140)
-    Nocturno = [0, ds) + [de, 1440)
-    """
-    fin_hoy = min(fin, 1440)
-    diurno  = overlap(inicio, fin_hoy, ds, de)
-    noct    = overlap(inicio, fin_hoy, 0, ds) + overlap(inicio, fin_hoy, de, 1440)
-
-    if fin > 1440:
-        fin2    = fin - 1440
-        diurno += overlap(0, fin2, ds, de)
-        noct   += overlap(0, fin2, 0, ds) + overlap(0, fin2, de, 1440)
-
-    return diurno, noct
-
-
-# ── Helpers de fecha ──────────────────────────────────────────────────────────
+def to_dec(t: str) -> float:
+    """Hora a decimal de día (como Excel). 06:00 = 0.25"""
+    if not t: return 0.0
+    return to_min(t) / 1440.0
 
 def get_lunes(f: date) -> date:
     return f - timedelta(days=f.weekday())
 
-
 def add_day(f: date, n: int = 1) -> date:
     return f + timedelta(days=n)
 
-
-def es_descanso_culto_semana(registros_semana: Dict) -> bool:
-    for f, r in registros_semana.items():
-        if hasattr(f, 'weekday'):
-            dow = f.weekday()
-        else:
-            dow = date.fromisoformat(str(f)).weekday()
+def es_descanso_culto_semana(regs):
+    for f, r in regs.items():
+        dow = f.weekday() if hasattr(f,'weekday') else date.fromisoformat(str(f)).weekday()
         if dow == 5 and (r.get("observacion") or "") == "DESCANSO POR CULTO":
             return True
     return False
 
+def diasem(f: date) -> int:
+    """DIASEM(f, 2): 1=Lun ... 6=Sab, 7=Dom"""
+    return f.weekday() + 1  # weekday(): 0=Lun...6=Dom → +1 = 1=Lun...7=Dom
 
-def dia_es_festivo(fecha: date, registros: Dict, es_culto: bool) -> bool:
+# Constantes horarias en decimal de día
+H = {
+    "00:00": 0.0,
+    "02:00": 2/24,
+    "06:00": 6/24,
+    "07:00": 7/24,
+    "14:00": 14/24,
+    "19:00": 19/24,
+    "22:00": 22/24,
+    "30:00": 30/24,  # 06:00 del día siguiente
+}
+
+def hn(t: str) -> float:
+    """HORANUMERO en decimal"""
+    return to_min(t) / 1440.0
+
+
+def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
     """
-    Determina si una fecha es festivo/domingo para efectos de clasificación.
-    - Domingo siempre es festivo (salvo técnico descanso por culto)
-    - Cualquier día con checkbox es_festivo=True
+    Calcula HED, HEN, RNO, HEFD, HEFN, RFD, RFN para una fila.
+    Traducción directa de las fórmulas Excel.
     """
-    dow = fecha.weekday()  # 0=lun … 6=dom
-    es_dom = dow == 6
-    reg = registros.get(fecha, {})
-    es_fest_cb = reg.get("es_festivo", False)
-    return es_fest_cb or (es_dom and not es_culto)
+    res = dict(horas_trab=0.0, hed=0.0, hen=0.0, rno=0.0,
+               hefd=0.0, hefn=0.0, rfd=0.0, rfn=0.0, min_dia=0.0)
 
+    entrada_s = registro.get("entrada", "")
+    salida_s  = registro.get("salida", "")
+    obs       = (registro.get("observacion") or "").strip().upper()
+    es_fest   = registro.get("es_festivo", False)
+    des_h     = (registro.get("descanso") or 0) / 60.0  # convertir min → horas
 
-# ── Clasificar un segmento ────────────────────────────────────────────────────
-
-def _clasificar_segmento(
-    seg_s: int, seg_e: int, seg_des: int,
-    seg_fest: bool,
-    min_rest_jornada: float,
-    ds: int, de: int,
-    resultado: dict,
-) -> float:
-    """
-    Clasifica un segmento horario y actualiza resultado.
-    Retorna los minutos consumidos de jornada en este segmento.
-    """
-    seg_bruto = seg_e - seg_s
-    seg_trab  = max(0, seg_bruto - seg_des)
-    if seg_trab <= 0:
-        return 0.0
-
-    diurno_raw, noct_raw = split_dn(seg_s, seg_e, ds, de)
-    ratio      = seg_trab / seg_bruto if seg_bruto > 0 else 0
-    diurno_min = round(diurno_raw * ratio)
-    noct_min   = round(noct_raw   * ratio)
-
-    dentro = min(seg_trab, min_rest_jornada)
-    exceso = seg_trab - dentro
-
-    d_r = diurno_min / seg_trab if seg_trab > 0 else 0
-    n_r = noct_min   / seg_trab if seg_trab > 0 else 0
-
-    d_dentro = round(dentro * d_r)
-    n_dentro = round(dentro * n_r)
-    d_exceso = round(exceso * d_r)
-    n_exceso = round(exceso * n_r)
-
-    if seg_fest:
-        resultado["rfd"]  += d_dentro / 60
-        resultado["rfn"]  += n_dentro / 60
-        resultado["hefd"] += d_exceso / 60
-        resultado["hefn"] += n_exceso / 60
-    else:
-        resultado["rno"]  += n_dentro / 60
-        resultado["hed"]  += d_exceso / 60
-        resultado["hen"]  += n_exceso / 60
-
-    return float(dentro)
-
-
-# ── Clasificación de un día ───────────────────────────────────────────────────
-
-def clasificar_dia(
-    fecha: date,
-    registro: dict,
-    min_acum_semana: float,
-    cfg: dict,
-    es_culto: bool,
-    obs_map: Dict[str, dict],
-    registros_todos: Dict = None,   # ← todos los registros del periodo para consultar día siguiente
-) -> dict:
-
-    resultado = dict(horas_trab=0.0, hed=0.0, hen=0.0, rno=0.0,
-                     hefd=0.0, hefn=0.0, rfd=0.0, rfn=0.0, min_dia=0.0)
-
-    jornada_sem_min = cfg["horas_sem"] * 60
-    ds = to_min(cfg["inicio_diurno"])
-    de = to_min(cfg["fin_diurno"])
-
-    # ── Festivo del día de inicio ─────────────────────────────────────────────
-    regs = registros_todos or {fecha: registro}
-    dia_fest_inicio = dia_es_festivo(fecha, {fecha: registro, **regs}, es_culto)
-
-    obs_nombre = (registro.get("observacion") or "").strip().upper()
-    entrada    = registro.get("entrada", "")
-    salida     = registro.get("salida", "")
-
-    # ── Sin horario: observación con horas fijas ──────────────────────────────
-    if not entrada or not salida:
-        if obs_nombre and obs_nombre in obs_map:
-            ob = obs_map[obs_nombre]
+    # Sin horario: observación con horas fijas
+    if not entrada_s or not salida_s:
+        if obs and obs in obs_map:
+            ob = obs_map[obs]
             if ob["cuenta_ot"] and ob["horas_fijas"] > 0:
-                min_obs = ob["horas_fijas"] * 60
-                resultado["horas_trab"] = ob["horas_fijas"]
-                resultado["min_dia"]    = min_obs
-        return resultado
+                res["horas_trab"] = ob["horas_fijas"]
+                res["min_dia"]    = ob["horas_fijas"] * 60
+        return res
 
-    # ── Tiempo bruto ──────────────────────────────────────────────────────────
-    s = to_min(entrada)
-    e = to_min(salida)
-    if e <= s:
-        e += 1440   # cruza medianoche
+    F = to_dec(entrada_s)   # entrada en decimal
+    G = to_dec(salida_s)    # salida en decimal
+    dw = diasem(fecha)      # 1=Lun...6=Sab, 7=Dom
+    B  = es_fest
 
-    des_min  = registro.get("descanso", 0) or 0
-    trab_min = max(0, (e - s) - des_min)
-    if trab_min <= 0:
-        return resultado
+    # Si salida < entrada, cruza medianoche → G+1
+    G_adj = G + 1 if G < F else G
 
-    resultado["horas_trab"] = round(trab_min / 60, 2)
-    resultado["min_dia"]    = trab_min
+    # Horas trabajadas
+    trab_h = (G_adj - F) * 24 - des_h
+    if trab_h <= 0:
+        return res
+    res["horas_trab"] = round(trab_h, 2)
+    res["min_dia"]    = round(trab_h * 60)
 
-    # ── Partir en segmentos si cruza medianoche ───────────────────────────────
-    min_rest = max(0.0, jornada_sem_min - min_acum_semana)
+    # ── HED ──────────────────────────────────────────────────────────────────
+    # Condición de exclusión: festivo O sin horario
+    if not B and entrada_s and salida_s:
+        if dw == 7:  # Domingo → no HED
+            hed = 0.0
+        elif dw == 6:  # Sábado
+            if F == hn("06:00"):
+                # Excel: (MIN(G,19:00)-F)*24 - 4 - descanso
+                # 4 = horas de la jornada sabatina ya contadas (jornada sab = 4h en 44h/6dias)
+                hed = (min(G_adj, hn("19:00")) - F) * 24 - (44/6) - des_h
+            elif F == hn("14:00"):
+                hed = 1.0
+            elif F == hn("07:00"):
+                hed = max(0, (min(G_adj, hn("19:00")) - F) * 24 - 8 - des_h)
+            else:
+                hed = 0.0
+        elif F == hn("22:00"):
+            # Turno noche: HED solo si la salida supera las 06:00
+            # G ya es la salida del dia siguiente, sin ajuste
+            hed = max(0, (G - hn("06:00")) * 24 - des_h) if G > hn("06:00") else 0.0
+        elif F == hn("07:00"):
+            hed = max(0, (min(G_adj, hn("19:00")) - F) * 24 - 8 - des_h)
+        elif F < hn("14:00"):
+            # HED = horas diurnas trabajadas - jornada diaria (7h20m = 7.333h)
+            jornada_dia = 44/6
+            horas_diurnas = (min(G_adj, hn("19:00")) - F) * 24
+            hed = max(0, horas_diurnas - jornada_dia - des_h)
+        else:
+            hed = 0.0
+        res["hed"] = round(max(0, hed), 1)
 
-    if e > 1440:
-        raw1 = 1440 - s
-        raw2 = e - 1440
-        raw_tot = e - s
-        des1 = round(des_min * raw1 / raw_tot)
-        des2 = des_min - des1
+    # ── HEN ──────────────────────────────────────────────────────────────────
+    if not B and entrada_s and salida_s:
+        if F == hn("06:00") and G_adj > hn("19:00"):
+            hen = (G_adj - hn("19:00")) * 24
+        elif dw == 6 and F == hn("22:00") and G == hn("06:00"):
+            hen = 0.0
+        elif dw == 6:
+            if hn("14:00") <= F < hn("22:00"):
+                hen = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
+            else:
+                hen = 0.0
+        elif dw == 5 and F >= hn("22:00"):
+            v = (G_adj - hn("30:00")) * 24
+            hen = 0.0 if v >= 24 else max(0, v)
+        elif hn("14:00") <= F < hn("22:00"):
+            # Turno tarde: HEN = horas nocturnas extras
+            # Si llega hasta las 22:00 exactas → HEN=1h fija
+            # Si pasa de las 22:00 → HEN = horas sobre 22:00
+            if G_adj <= hn("22:00"):
+                hen = 1.0  # 1h fija por turno tarde completo
+            else:
+                hen = max(0, (G_adj - hn("22:00")) * 24)
+        else:
+            hen = 0.0
+        res["hen"] = round(max(0, hen), 1)
 
-        # Día siguiente: ¿es festivo?
-        fecha2     = add_day(fecha)
-        dia_fest2  = dia_es_festivo(fecha2, regs, es_culto)
+    # ── RNO ──────────────────────────────────────────────────────────────────
+    if entrada_s and salida_s:
+        if dw == 5 and F == hn("22:00"):
+            # Viernes noche: verificar si el domingo también es noche
+            rno = 4.0
+        elif dw == 6 and F == hn("22:00"):
+            rno = max(0, (min(G_adj, 1.0) - hn("22:00")) * 24)
+        elif dw == 6:
+            rno = 0.0
+        elif dw == 7 and F == hn("22:00"):
+            rno = 0.0  # Domingo noche → todo HEFN
+        elif dw == 7:
+            rno = 0.0
+        elif B:
+            if F >= hn("22:00"):
+                rno = max(0, (min(G_adj, hn("06:00") + 1) - 1) * 24)
+            else:
+                rno = 0.0
+        elif F < hn("14:00"):
+            rno = 0.0
+        elif hn("14:00") <= F < hn("22:00"):
+            rno = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
+        else:
+            rno = max(0, (min(G_adj, hn("06:00") + 1) - hn("22:00")) * 24)
+        res["rno"] = round(max(0, rno), 1)
 
-        # Segmento 1: día inicio (s → 1440)
-        consumido = _clasificar_segmento(s, 1440, des1, dia_fest_inicio, min_rest, ds, de, resultado)
-        min_rest  = max(0.0, min_rest - consumido)
+    # ── HEFD ─────────────────────────────────────────────────────────────────
+    if entrada_s and salida_s:
+        if dw == 7:  # Domingo
+            if F < hn("14:00"):
+                hefd = max(0, round((min(G_adj, hn("19:00")) - F) * 24 - des_h, 2))
+            elif hn("14:00") <= F < hn("22:00"):
+                hefd = max(0, round((min(G_adj, hn("19:00")) - F) * 24 - des_h, 2))
+            else:
+                hefd = 0.0
+        elif B:
+            if F == hn("22:00"):
+                hefd = max(0, round((G_adj - hn("06:00")) * 24 - des_h, 2))
+            else:
+                hefd = max(0, round((min(G_adj, hn("19:00")) - (F + 8/24)) * 24 - des_h, 2))
+        else:
+            hefd = 0.0
+        res["hefd"] = round(max(0, hefd), 1)
 
-        # Segmento 2: día siguiente (0 → raw2)
-        _clasificar_segmento(0, raw2, des2, dia_fest2, min_rest, ds, de, resultado)
-    else:
-        _clasificar_segmento(s, e, des_min, dia_fest_inicio, min_rest, ds, de, resultado)
+    # ── HEFN ─────────────────────────────────────────────────────────────────
+    if entrada_s and salida_s:
+        if dw == 6 and F == hn("22:00"):
+            hefn = max(0, (G_adj - hn("02:00") - 1) * 24)
+        elif dw == 7:
+            if F >= hn("22:00"):
+                hefn = (G_adj - F) * 24  # Dom noche → todo HEFN
+            else:
+                hefn = max(0, (G_adj - hn("19:00")) * 24)
+        elif B and (G_adj - F) * 24 > 8:
+            if F == hn("22:00"):
+                hefn = 0.0
+            elif F == hn("14:00"):
+                hefn = max(0, (min(G_adj, 1.0) - hn("22:00")) * 24)
+            else:
+                hefn = max(0, (G_adj - hn("19:00")) * 24)
+        else:
+            hefn = 0.0
+        res["hefn"] = round(max(0, hefn), 1)
 
-    for k in ["hed","hen","rno","hefd","hefn","rfd","rfn","horas_trab"]:
-        resultado[k] = round(resultado[k], 1)
+    # ── RFD ──────────────────────────────────────────────────────────────────
+    if entrada_s and salida_s and B:
+        if F < hn("14:00"):
+            rfd = min(8, max(0, (min(G_adj, hn("19:00")) - F) * 24))
+        elif hn("14:00") <= F < hn("22:00"):
+            rfd = min(8, max(0, (min(G_adj, hn("19:00")) - hn("14:00")) * 24))
+        else:
+            rfd = 0.0
+        res["rfd"] = round(max(0, rfd), 1)
 
-    return resultado
+    # ── RFN ──────────────────────────────────────────────────────────────────
+    if entrada_s and salida_s:
+        if dw == 6 and F == hn("22:00"):
+            rfn = max(0, (min(G_adj, hn("02:00") + 1) - 1) * 24)
+        elif dw == 7 and F >= hn("22:00"):
+            rfn = 0.0  # Domingo noche → todo HEFN
+        elif B:
+            if hn("14:00") <= F < hn("22:00"):
+                rfn = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
+            elif F >= hn("22:00"):
+                rfn = max(0, (min(G_adj + 1, 1.0) - hn("22:00")) * 24)
+            else:
+                rfn = 0.0
+        else:
+            rfn = 0.0
+        res["rfn"] = round(max(0, rfn), 1)
+
+    return res
 
 
-# ── Calcular semana ───────────────────────────────────────────────────────────
+# ── Semana y Periodo ──────────────────────────────────────────────────────────
 
-def calcular_semana(
-    dias: List[date],
-    registros: Dict[date, dict],
-    cfg: dict,
-    obs_map: Dict[str, dict],
-) -> Dict[str, Any]:
+def clasificar_dia(fecha, registro, min_acum_semana, cfg, es_culto, obs_map,
+                   registros_todos=None):
+    """Wrapper para compatibilidad con el resto del código."""
+    obs_map_simple = obs_map
+    return calcular_fila(fecha, registro, obs_map_simple)
 
-    es_culto = es_descanso_culto_semana({f: registros.get(f, {}) for f in dias})
+
+def calcular_semana(dias, registros, cfg, obs_map):
+    es_culto = es_descanso_culto_semana({f: registros.get(f,{}) for f in dias})
     min_acum = 0.0
     rows = []
-
     for fecha in dias:
         reg = registros.get(fecha, {})
-        resultado = clasificar_dia(
-            fecha, reg, min_acum, cfg, es_culto, obs_map,
-            registros_todos=registros   # pasar todos para consultar día siguiente
-        )
-        rows.append({"fecha": fecha, "resultado": resultado, "registro": reg})
-        min_acum += resultado["min_dia"]
-
-    horas_sem = round(min_acum / 60, 1)
-    ot_semana = round(horas_sem - cfg["horas_sem"], 1)
-
-    return {"rows": rows, "ot_semana": ot_semana, "horas_semana": horas_sem}
+        res = calcular_fila(fecha, reg, obs_map)
+        rows.append({"fecha": fecha, "resultado": res, "registro": reg})
+        min_acum += res["min_dia"]
+    return {"rows": rows,
+            "ot_semana":    round(min_acum/60 - cfg["horas_sem"], 1),
+            "horas_semana": round(min_acum/60, 1)}
 
 
-# ── Calcular periodo ──────────────────────────────────────────────────────────
-
-def calcular_periodo(
-    year: int,
-    month: int,
-    registros: Dict[date, dict],
-    cfg: dict,
-    obs_map: Dict[str, dict],
-) -> Dict[str, Any]:
-
+def calcular_periodo(year, month, registros, cfg, obs_map):
     inicio  = date(year, month, 21)
-    mes_fin = month + 1 if month < 12 else 1
-    año_fin = year if month < 12 else year + 1
+    mes_fin = month+1 if month<12 else 1
+    año_fin = year if month<12 else year+1
     fin     = date(año_fin, mes_fin, 20)
 
-    dias_periodo = []
+    dias = []
     d = inicio
     while d <= fin:
-        dias_periodo.append(d)
+        dias.append(d)
         d += timedelta(days=1)
 
-    # Agrupar por semana laboral Dom-Sáb
-    # Semana empieza el domingo y termina el sábado
-    semanas: Dict[date, List[date]] = {}
-    for d in dias_periodo:
-        dow = d.weekday()  # 0=lun … 6=dom
-        if dow == 6:
-            # Domingo es el INICIO de la semana
-            dom = d
-        else:
-            # Para lun(0)→sáb(5) retroceder al domingo anterior
-            dom = d - timedelta(days=dow + 1)
+    # Agrupar Dom→Sáb
+    semanas = {}
+    for d in dias:
+        dow = d.weekday()
+        dom = d if dow == 6 else d - timedelta(days=dow+1)
         if dom not in semanas:
             semanas[dom] = []
         semanas[dom].append(d)
 
     semanas_result = []
-    for lun in sorted(semanas.keys()):
-        res = calcular_semana(semanas[lun], registros, cfg, obs_map)
-        semanas_result.append({"lunes": lun, **res})
+    for dom in sorted(semanas.keys()):
+        res = calcular_semana(semanas[dom], registros, cfg, obs_map)
+        semanas_result.append({"lunes": dom, **res})
 
     sub = dict(hed=0.0, hen=0.0, rno=0.0, hefd=0.0, hefn=0.0,
                rfd=0.0, rfn=0.0, horas_total=0.0, ot_total=0.0)
@@ -277,41 +298,22 @@ def calcular_periodo(
         for row in sem["rows"]:
             for col in ["hed","hen","rno","hefd","hefn","rfd","rfn"]:
                 sub[col] += row["resultado"][col]
-
     for k in sub:
         sub[k] = round(sub[k], 1)
 
-    return {
-        "semanas": semanas_result,
-        "subtotales": sub,
-        "dias": [d.isoformat() for d in dias_periodo],
-        "inicio": inicio.isoformat(),
-        "fin":    fin.isoformat(),
-    }
+    return {"semanas": semanas_result, "subtotales": sub,
+            "dias": [d.isoformat() for d in dias],
+            "inicio": inicio.isoformat(), "fin": fin.isoformat()}
 
 
-# ── Factores y valores en pesos ───────────────────────────────────────────────
+FACTORES = {"hed":1.25,"hen":1.75,"rno":0.35,
+            "hefd":2.00,"hefn":2.50,"rfd":0.75,"rfn":1.10}
 
-FACTORES = {
-    "hed":  1.25,
-    "hen":  1.75,
-    "rno":  0.35,
-    "hefd": 2.00,
-    "hefn": 2.50,
-    "rfd":  0.75,
-    "rfn":  1.10,
-}
-
-
-def calcular_valores(sueldo: float, horas_sem: float, subtotales: dict) -> dict:
-    valor_hora = sueldo / (horas_sem * 4.333333)
-    resultado  = {}
-    neto       = 0.0
-    for col, factor in FACTORES.items():
-        horas = subtotales.get(col, 0.0)
-        valor = round(horas * valor_hora * factor, 2)
-        resultado[f"val_{col}"] = valor
-        neto += valor
-    resultado["neto"]       = round(neto, 2)
-    resultado["valor_hora"] = round(valor_hora, 2)
-    return resultado
+def calcular_valores(sueldo, horas_sem, subtotales):
+    vh = sueldo / (horas_sem * 4.333333)
+    res = {}; neto = 0.0
+    for col, f in FACTORES.items():
+        v = round(subtotales.get(col,0.0)*vh*f, 2)
+        res[f"val_{col}"] = v; neto += v
+    res["neto"] = round(neto,2); res["valor_hora"] = round(vh,2)
+    return res
