@@ -64,7 +64,9 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
     salida_s  = registro.get("salida", "")
     obs       = (registro.get("observacion") or "").strip().upper()
     es_fest   = registro.get("es_festivo", False)
-    des_h     = (registro.get("descanso") or 0) / 60.0  # convertir min → horas
+    des_raw   = registro.get("descanso") or 0
+    # descanso puede venir en minutos (>3) o en horas (<3)
+    des_h     = des_raw / 60.0 if des_raw > 3 else float(des_raw)
 
     # Sin horario: observación con horas fijas
     if not entrada_s or not salida_s:
@@ -91,15 +93,13 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
     res["min_dia"]    = round(trab_h * 60)
 
     # ── HED ──────────────────────────────────────────────────────────────────
-    # Condición de exclusión: festivo O sin horario
+    # Traduccion exacta formula Excel
     if not B and entrada_s and salida_s:
         if dw == 7:  # Domingo → no HED
             hed = 0.0
         elif dw == 6:  # Sábado
             if F == hn("06:00"):
-                # Excel: (MIN(G,19:00)-F)*24 - 4 - descanso
-                # 4 = horas de la jornada sabatina ya contadas (jornada sab = 4h en 44h/6dias)
-                hed = (min(G_adj, hn("19:00")) - F) * 24 - (44/6) - des_h
+                hed = (min(G_adj, hn("19:00")) - F) * 24 - 4 - des_h
             elif F == hn("14:00"):
                 hed = 1.0
             elif F == hn("07:00"):
@@ -107,16 +107,15 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
             else:
                 hed = 0.0
         elif F == hn("22:00"):
-            # Turno noche: HED solo si la salida supera las 06:00
-            # G ya es la salida del dia siguiente, sin ajuste
             hed = max(0, (G - hn("06:00")) * 24 - des_h) if G > hn("06:00") else 0.0
         elif F == hn("07:00"):
             hed = max(0, (min(G_adj, hn("19:00")) - F) * 24 - 8 - des_h)
         elif F < hn("14:00"):
-            # HED = horas diurnas trabajadas - jornada diaria (7h20m = 7.333h)
-            jornada_dia = 44/6
-            horas_diurnas = (min(G_adj, hn("19:00")) - F) * 24
-            hed = max(0, horas_diurnas - jornada_dia - des_h)
+            # Formula Excel: (MIN(G,19:00) - 14:00)*24 - descanso
+            g_cap = min(G_adj, hn("19:00"))
+            if g_cap <= hn("06:00"):
+                g_cap += 1
+            hed = max(0, (g_cap - hn("14:00")) * 24 - des_h)
         else:
             hed = 0.0
         res["hed"] = round(max(0, hed), 1)
