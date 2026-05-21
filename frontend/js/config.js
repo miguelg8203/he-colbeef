@@ -32,34 +32,46 @@ const RES = {
     const foot = document.getElementById("res-foot");
     let totalNeto = 0;
     const totSub = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
+    const totVal = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
+    const fv = v => v ? Number(v).toFixed(2) : "";
     body.innerHTML = data.map((t, i) => {
       totalNeto += t.neto || 0;
-      ["hed","hen","rno","hefd","hefn","rfd","rfn"].forEach(k => totSub[k] += t[k] || 0);
+      ["hed","hen","rno","hefd","hefn","rfd","rfn"].forEach(k => {
+        totSub[k] += t[k] || 0;
+        totVal[k] += t["val_"+k] || 0;
+      });
       return `<tr>
         <td class="num">${i+1}</td>
         <td>${t.nombre}</td>
         <td style="color:var(--text2)">${t.cargo}</td>
         <td class="num">${fmtCop(t.sueldo)}</td>
         <td class="num">${fmt(t.hed)}</td>
+        <td class="num">${fv(t.val_hed)}</td>
         <td class="num">${fmt(t.hen)}</td>
+        <td class="num">${fv(t.val_hen)}</td>
         <td class="num">${fmt(t.rno)}</td>
+        <td class="num">${fv(t.val_rno)}</td>
         <td class="num">${fmt(t.hefd)}</td>
+        <td class="num">${fv(t.val_hefd)}</td>
         <td class="num">${fmt(t.hefn)}</td>
+        <td class="num">${fv(t.val_hefn)}</td>
         <td class="num">${fmt(t.rfd)}</td>
+        <td class="num">${fv(t.val_rfd)}</td>
         <td class="num">${fmt(t.rfn)}</td>
+        <td class="num">${fv(t.val_rfn)}</td>
         <td class="neto">${fmtCop(t.neto || 0)}</td>
       </tr>`;
     }).join("");
     foot.innerHTML = `<tr>
       <td colspan="3" style="text-align:right;padding-right:12px">TOTAL</td>
       <td></td>
-      <td class="num">${fmt(totSub.hed)}</td>
-      <td class="num">${fmt(totSub.hen)}</td>
-      <td class="num">${fmt(totSub.rno)}</td>
-      <td class="num">${fmt(totSub.hefd)}</td>
-      <td class="num">${fmt(totSub.hefn)}</td>
-      <td class="num">${fmt(totSub.rfd)}</td>
-      <td class="num">${fmt(totSub.rfn)}</td>
+      <td class="num">${fmt(totSub.hed)}</td><td class="num">${fv(totVal.hed)}</td>
+      <td class="num">${fmt(totSub.hen)}</td><td class="num">${fv(totVal.hen)}</td>
+      <td class="num">${fmt(totSub.rno)}</td><td class="num">${fv(totVal.rno)}</td>
+      <td class="num">${fmt(totSub.hefd)}</td><td class="num">${fv(totVal.hefd)}</td>
+      <td class="num">${fmt(totSub.hefn)}</td><td class="num">${fv(totVal.hefn)}</td>
+      <td class="num">${fmt(totSub.rfd)}</td><td class="num">${fv(totVal.rfd)}</td>
+      <td class="num">${fmt(totSub.rfn)}</td><td class="num">${fv(totVal.rfn)}</td>
       <td class="neto">${fmtCop(totalNeto)}</td>
     </tr>`;
   },
