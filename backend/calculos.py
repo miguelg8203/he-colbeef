@@ -14,9 +14,10 @@ def to_min(t: str) -> int:
     return int(h)*60 + int(m)
 
 def to_dec(t: str) -> float:
-    """Hora a decimal de día (como Excel). 06:00 = 0.25"""
+    """Hora a decimal. Soporta 24:00 como medianoche."""
     if not t: return 0.0
-    return to_min(t) / 1440.0
+    h, m = t.split(":")
+    return (int(h)*60 + int(m)) / 1440.0
 
 def get_lunes(f: date) -> date:
     return f - timedelta(days=f.weekday())
@@ -143,6 +144,15 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
 
     # ── RNO ──────────────────────────────────────────────────────────────────
     if entrada_s and salida_s:
+        if F >= 1.0:
+            # Entrada 24:00 o posterior → turno nocturno desde medianoche
+            # F=1.0 = 24:00 = 00:00 del día siguiente
+            # Calcular horas nocturnas reales
+            rno = max(0, (G_adj - F) * 24 - des_h)
+            res["rno"] = round(rno, 1)
+            for k in ["hed","hen","hefd","hefn","rfd","rfn","horas_trab"]:
+                res[k] = round(res[k], 1)
+            return res
         if dw == 5 and F == hn("22:00"):
             # Formula Excel: verifica si domingo (E+2) tambien tiene F=22:00
             # Si no tenemos esa info, usamos el calculo completo
