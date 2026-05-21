@@ -311,10 +311,12 @@ def calcular_periodo(year, month, registros, cfg, obs_map):
 
 
 FACTORES = {"hed":1.25,"hen":1.75,"rno":0.35,
-            "hefd":2.00,"hefn":2.50,"rfd":0.75,"rfn":1.10}
+            "hefd":2.05,"hefn":2.55,"rfd":0.80,"rfn":1.15}
 
 def calcular_valores(sueldo, horas_sem, subtotales):
-    vh = sueldo / (horas_sem * 4.333333)
+    # Formula Excel: Sueldo / jornada_mensual * horas * factor
+    jornada_mensual = round((horas_sem / 6) * 30)  # 220 para 44h, 210 para 42h
+    vh = sueldo / jornada_mensual
     res = {}; neto = 0.0
     for col, f in FACTORES.items():
         v = round(subtotales.get(col,0.0)*vh*f, 2)
