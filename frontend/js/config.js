@@ -1,4 +1,9 @@
 // ── Resumen HE ────────────────────────────────────────────────────────────────
+const fmtCol = v => {
+  if (!v && v !== 0) return "";
+  return "$" + Number(v).toLocaleString("es-CO", {minimumFractionDigits:2, maximumFractionDigits:2});
+};
+
 const RES = {
   init() { this._updateLabel(); this.cargar(); },
 
@@ -33,7 +38,7 @@ const RES = {
     let totalNeto = 0;
     const totSub = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
     const totVal = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
-    const fv = v => v ? Number(v).toFixed(2) : "";
+    const fv = v => v ? fmtCol(v) : "";
     body.innerHTML = data.map((t, i) => {
       totalNeto += t.neto || 0;
       ["hed","hen","rno","hefd","hefn","rfd","rfn"].forEach(k => {
@@ -44,7 +49,7 @@ const RES = {
         <td class="num">${i+1}</td>
         <td>${t.nombre}</td>
         <td style="color:var(--text2)">${t.cargo}</td>
-        <td class="num">${fmtCop(t.sueldo)}</td>
+        <td class="num">${fmtCol(t.sueldo)}</td>
         <td class="num">${fmt(t.hed)}</td>
         <td class="num">${fv(t.val_hed)}</td>
         <td class="num">${fmt(t.hen)}</td>
@@ -59,7 +64,7 @@ const RES = {
         <td class="num">${fv(t.val_rfd)}</td>
         <td class="num">${fmt(t.rfn)}</td>
         <td class="num">${fv(t.val_rfn)}</td>
-        <td class="neto">${fmtCop(t.neto || 0)}</td>
+        <td class="neto">${fmtCol(t.neto || 0)}</td>
       </tr>`;
     }).join("");
     foot.innerHTML = `<tr>
@@ -72,7 +77,7 @@ const RES = {
       <td class="num">${fmt(totSub.hefn)}</td><td class="num">${fv(totVal.hefn)}</td>
       <td class="num">${fmt(totSub.rfd)}</td><td class="num">${fv(totVal.rfd)}</td>
       <td class="num">${fmt(totSub.rfn)}</td><td class="num">${fv(totVal.rfn)}</td>
-      <td class="neto">${fmtCop(totalNeto)}</td>
+      <td class="neto">${fmtCol(totalNeto)}</td>
     </tr>`;
   },
 
