@@ -10,6 +10,10 @@ router = APIRouter(prefix="/calculos", tags=["calculos"])
 
 def _get_cfg(db):
     c = db.query(Configuracion).first()
+    if not c:
+        from database import init_db
+        init_db()
+        c = db.query(Configuracion).first()
     return {"horas_sem": c.horas_sem, "inicio_diurno": c.inicio_diurno, "fin_diurno": c.fin_diurno}
 
 
@@ -40,6 +44,8 @@ def periodo(tecnico_id: int, year: int, month: int, db: Session = Depends(get_db
             "entrada": r.entrada, "salida": r.salida,
             "descanso": r.descanso, "es_festivo": r.es_festivo,
             "observacion": r.observacion,
+            "hed": r.hed, "hen": r.hen, "rno": r.rno,
+            "hefd": r.hefd, "hefn": r.hefn, "rfd": r.rfd, "rfn": r.rfn,
         }
 
     return calcular_periodo(year, month, regs, cfg, obs_map)

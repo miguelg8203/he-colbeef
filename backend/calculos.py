@@ -52,7 +52,7 @@ def hn(t: str) -> float:
     return to_min(t) / 1440.0
 
 
-def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
+def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: dict = None) -> dict:
     """
     Calcula HED, HEN, RNO, HEFD, HEFN, RFD, RFN para una fila.
     Traducción directa de las fórmulas Excel.
@@ -144,8 +144,18 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
     # ── RNO ──────────────────────────────────────────────────────────────────
     if entrada_s and salida_s:
         if dw == 5 and F == hn("22:00"):
-            # Viernes noche: verificar si el domingo también es noche
-            rno = 4.0
+            # Formula Excel: verifica si domingo (E+2) tambien tiene F=22:00
+            # Si no tenemos esa info, usamos el calculo completo
+            dom_fecha = fecha + timedelta(days=2)
+            reg_dom = (registros_todos or {}).get(dom_fecha, {})
+            if not reg_dom and registros_todos:
+                # Try string key
+                reg_dom = registros_todos.get(dom_fecha.isoformat(), {})
+            dom_entrada = reg_dom.get("entrada", "")
+            if dom_entrada and to_dec(dom_entrada) == hn("22:00"):
+                rno = 4.0  # Domingo tambien es noche → RNO=4
+            else:
+                rno = max(0, (min(G_adj, hn("06:00")+1) - hn("22:00")) * 24)
         elif dw == 6 and F == hn("22:00"):
             rno = max(0, (min(G_adj, 1.0) - hn("22:00")) * 24)
         elif dw == 6:
@@ -250,7 +260,7 @@ def calcular_semana(dias, registros, cfg, obs_map):
     rows = []
     for fecha in dias:
         reg = registros.get(fecha, {})
-        res = calcular_fila(fecha, reg, obs_map)
+        res = calcular_fila(fecha, reg, obs_map, registros_todos=registros)
         rows.append({"fecha": fecha, "resultado": res, "registro": reg})
         min_acum += res["min_dia"]
     return {"rows": rows,
