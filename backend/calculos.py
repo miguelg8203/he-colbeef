@@ -135,13 +135,8 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict) -> dict:
             v = (G_adj - hn("30:00")) * 24
             hen = 0.0 if v >= 24 else max(0, v)
         elif hn("14:00") <= F < hn("22:00"):
-            # Turno tarde: HEN = horas nocturnas extras
-            # Si llega hasta las 22:00 exactas → HEN=1h fija
-            # Si pasa de las 22:00 → HEN = horas sobre 22:00
-            if G_adj <= hn("22:00"):
-                hen = 1.0  # 1h fija por turno tarde completo
-            else:
-                hen = max(0, (G_adj - hn("22:00")) * 24)
+            # Formula Excel: MAX(0,(MIN(G_adj,22:00)-22:00)*24)
+            hen = max(0, (min(G_adj, hn("22:00")) - hn("22:00")) * 24)
         else:
             hen = 0.0
         res["hen"] = round(max(0, hen), 1)
