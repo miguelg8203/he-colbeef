@@ -171,7 +171,8 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
         elif dw == 6:
             rno = 0.0
         elif dw == 7 and F == hn("22:00"):
-            rno = 0.0  # Domingo noche → todo HEFN
+            # Dom noche: horas del lunes (00:00→salida) van a RNO
+            rno = max(0, (G_adj - 1.0) * 24)
         elif dw == 7:
             rno = 0.0
         elif B:
@@ -212,7 +213,9 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
             hefn = max(0, (G_adj - hn("02:00") - 1) * 24)
         elif dw == 7:
             if F >= hn("22:00"):
-                hefn = (G_adj - F) * 24  # Dom noche → todo HEFN
+                # Dom noche: solo horas del domingo (hasta medianoche) son HEFN/RFN
+                # horas del lunes (00:00-06:00) van a RNO
+                hefn = 0.0  # Se calcula en RFN/RNO
             else:
                 hefn = max(0, (G_adj - hn("19:00")) * 24)
         elif B and (G_adj - F) * 24 > 8:
@@ -241,7 +244,8 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
         if dw == 6 and F == hn("22:00"):
             rfn = max(0, (min(G_adj, hn("02:00") + 1) - 1) * 24)
         elif dw == 7 and F >= hn("22:00"):
-            rfn = 0.0  # Domingo noche → todo HEFN
+            # Dom noche: horas hasta medianoche = RFN
+            rfn = (1.0 - F) * 24  # ej: (1.0 - 22/24)*24 = 2h
         elif B:
             if hn("14:00") <= F < hn("22:00"):
                 rfn = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
