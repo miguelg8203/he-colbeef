@@ -198,7 +198,8 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
                 hefd = 0.0
         elif B:
             if F == hn("22:00"):
-                hefd = max(0, round((G_adj - hn("06:00")) * 24 - des_h, 2))
+                # Turno noche festivo: no hay horas diurnas → HEFD=0
+                hefd = 0.0
             else:
                 hefd = max(0, round((min(G_adj, hn("19:00")) - (F + 8/24)) * 24 - des_h, 2))
         else:
