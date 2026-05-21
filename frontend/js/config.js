@@ -84,7 +84,7 @@ const CFG = {
   _updateHint() {
     const h  = +document.getElementById("cfg-horas").value || 44;
     const jd = +(h / 6).toFixed(2);
-    const jm = +(jd * 30).toFixed(2);
+    const jm = Math.round(jd * 30);
     const dEl = document.getElementById("cfg-jornada-dia");
     const mEl = document.getElementById("cfg-jornada-mes");
     if (dEl) dEl.textContent = jd;
