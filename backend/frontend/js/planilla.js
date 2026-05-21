@@ -51,7 +51,8 @@ const PLAN = {
 
     const { y, m } = STATE.planPeriod;
     try {
-      this.data = await API.get(`/calculos/periodo/${tecId}?year=${y}&month=${m}`);
+      const eid = STATE.empresa.empresa_id;
+      this.data = await API.get(`/calculos/periodo/${tecId}?year=${y}&month=${m}&empresa_id=${eid}`);
       this.render();
       document.getElementById("plan-empty").style.display = "none";
       document.getElementById("plan-table-wrap").style.display = "block";
@@ -97,9 +98,9 @@ const PLAN = {
           <td class="ot-cell" id="ot-${si}"></td>
           ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col => `
             <td class="he-val">
-              <input type="number" value="${fmt(res[col])||''}" min="0" max="24" step="0.1"
+              <input type="number" value="${reg[col]>0?fmt(reg[col]):''}" min="0" max="24" step="0.1"
                 style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
-                color:${res[col]>0?'#008855':'inherit'}"
+                color:${reg[col]>0?'#008855':'inherit'}"
                 onchange="PLAN.saveHE('${item.fecha}','${col}',+this.value)"
                 onpaste="setTimeout(()=>PLAN.saveHE('${item.fecha}','${col}',+this.value),50)">
             </td>`).join('')}
@@ -152,12 +153,13 @@ const PLAN = {
     reg[field] = value;
     reg.fecha  = fecha;
 
-    // Defaults
-    if (!reg.es_festivo) reg.es_festivo = false;
-    if (!reg.descanso)   reg.descanso   = 0;
+    // Defaults - conservar es_festivo si ya existe
+    if (reg.es_festivo === undefined || reg.es_festivo === null) reg.es_festivo = false;
+    if (!reg.descanso) reg.descanso = 0;
 
     try {
-      await API.post(`/registros/${tecId}`, reg);
+      const eid2 = STATE.empresa.empresa_id;
+      await API.post(`/registros/${tecId}?empresa_id=${eid2}`, reg);
       // Recargar para reflejar cálculos
       await this.cargar();
     } catch(e) { UI.toast("Error al guardar", "err"); }
@@ -166,14 +168,10 @@ const PLAN = {
   async saveHE(fecha, campo, valor) {
     const tecId = STATE.planTecId;
     if (!tecId) return;
-    const row = this.data?.semanas.flatMap(s => s.rows).find(r => r.fecha === fecha);
-    const reg = row ? { ...row.registro } : {};
-    reg.fecha = fecha;
-    reg[campo] = valor;
-    if (!reg.es_festivo) reg.es_festivo = false;
-    if (!reg.descanso)   reg.descanso   = 0;
     try {
       await API.post(`/registros/${tecId}/manual`, { fecha, campo, valor });
+      UI.toast("✅ Guardado", "ok");
+      // Solo actualizar el subtotal sin recargar toda la planilla
       await this.cargar();
     } catch(e) { UI.toast("Error al guardar HE", "err"); }
   },
