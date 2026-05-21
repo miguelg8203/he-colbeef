@@ -173,7 +173,16 @@
             <input type="time" id="cfg-fin">
           </div>
         </div>
-        <p class="hint" id="cfg-hint"></p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;margin-top:-6px;">
+          <div style="font-size:11px;color:var(--text3)">
+            Jornada diaria (÷6):
+            <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h
+          </div>
+          <div style="font-size:11px;color:var(--text3)">
+            Jornada mensual (×30):
+            <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h
+          </div>
+        </div>
         <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
       </div>
 
