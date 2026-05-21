@@ -30,10 +30,8 @@ const RES = {
   render(data) {
     const body = document.getElementById("res-body");
     const foot = document.getElementById("res-foot");
-
     let totalNeto = 0;
-    const totSub  = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
-
+    const totSub = { hed:0, hen:0, rno:0, hefd:0, hefn:0, rfd:0, rfn:0 };
     body.innerHTML = data.map((t, i) => {
       totalNeto += t.neto || 0;
       ["hed","hen","rno","hefd","hefn","rfd","rfn"].forEach(k => totSub[k] += t[k] || 0);
@@ -52,7 +50,6 @@ const RES = {
         <td class="neto">${fmtCop(t.neto || 0)}</td>
       </tr>`;
     }).join("");
-
     foot.innerHTML = `<tr>
       <td colspan="3" style="text-align:right;padding-right:12px">TOTAL</td>
       <td></td>
@@ -77,20 +74,21 @@ const RES = {
 const CFG = {
   init() {
     const c = STATE.config;
-    document.getElementById("cfg-horas").value  = c.horas_sem   || 44;
-    document.getElementById("cfg-inicio").value = c.inicio_diurno|| "06:00";
-    document.getElementById("cfg-fin").value    = c.fin_diurno  || "19:00";
+    document.getElementById("cfg-horas").value  = c.horas_sem    || 44;
+    document.getElementById("cfg-inicio").value = c.inicio_diurno || "06:00";
+    document.getElementById("cfg-fin").value    = c.fin_diurno   || "19:00";
     this._updateHint();
     this.renderObs();
   },
 
   _updateHint() {
-    const h = +document.getElementById("cfg-horas").value || 44;
-    const min = h * 60;
-    const hd = Math.floor(min / 6 / 60);
-    const md = Math.round((min / 6) % 60);
-    document.getElementById("cfg-hint").textContent =
-      `Jornada diaria (6 días): ${hd}h ${md}min`;
+    const h  = +document.getElementById("cfg-horas").value || 44;
+    const jd = +(h / 6).toFixed(2);
+    const jm = +(jd * 30).toFixed(2);
+    const dEl = document.getElementById("cfg-jornada-dia");
+    const mEl = document.getElementById("cfg-jornada-mes");
+    if (dEl) dEl.textContent = jd;
+    if (mEl) mEl.textContent = jm;
   },
 
   async guardar() {
@@ -99,9 +97,9 @@ const CFG = {
       inicio_diurno:  document.getElementById("cfg-inicio").value,
       fin_diurno:     document.getElementById("cfg-fin").value,
     };
+    this._updateHint();
     try {
       STATE.config = await API.put("/config", cfg);
-      this._updateHint();
       UI.toast("✅ Configuración guardada");
     } catch(e) { UI.toast("Error al guardar config", "err"); }
   },
@@ -160,4 +158,5 @@ const CFG = {
   },
 };
 
-document.getElementById("cfg-horas").addEventListener("input", () => CFG._updateHint());
+document.getElementById("cfg-horas").addEventListener("input",  () => CFG._updateHint());
+document.getElementById("cfg-horas").addEventListener("change", () => CFG._updateHint());
