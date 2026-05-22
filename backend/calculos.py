@@ -4,6 +4,7 @@ Fórmulas traducidas directamente del Excel original.
 Columnas: B=esFestivo, E=fecha, F=entrada, G=salida, H=descanso(horas)
 DIASEM(E,2): 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab, 7=Dom
 """
+import math
 from datetime import date, timedelta
 from typing import List, Dict, Any
 
@@ -110,16 +111,24 @@ def calcular_fila(fecha: date, registro: dict, obs_map: dict, registros_todos: d
         elif F == hn("22:00"):
             hed = max(0, (G - hn("06:00")) * 24 - des_h) if G > hn("06:00") else 0.0
         elif F == hn("07:00"):
-            hed = max(0, (min(G_adj, hn("19:00")) - F) * 24 - 8 - des_h)
+            diff = round((min(G_adj, hn("19:00")) - F) * 24 - 8 - des_h, 4)
+            if diff < 0:
+                hed = -math.ceil(abs(diff))
+            else:
+                hed = max(0, diff)
         elif F < hn("14:00"):
             # Formula Excel: (MIN(G,19:00) - 14:00)*24 - descanso
             g_cap = min(G_adj, hn("19:00"))
             if g_cap <= hn("06:00"):
                 g_cap += 1
-            hed = max(0, (g_cap - hn("14:00")) * 24 - des_h)
+            diff = round((g_cap - hn("14:00")) * 24 - des_h, 4)
+            if diff < 0:
+                hed = -math.ceil(abs(diff))
+            else:
+                hed = max(0, diff)
         else:
             hed = 0.0
-        res["hed"] = round(max(0, hed), 1)
+        res["hed"] = hed if isinstance(hed, int) else round(hed, 1)
 
     # ── HEN ──────────────────────────────────────────────────────────────────
     if not B and entrada_s and salida_s:
