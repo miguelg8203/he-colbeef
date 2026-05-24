@@ -64,25 +64,26 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
          for r in regs_db} or {}, cfg, obs_map)
 
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
-                            leftMargin=1*cm, rightMargin=1*cm,
-                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+    from reportlab.lib.pagesizes import A3
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A3),
+                            leftMargin=0.8*cm, rightMargin=0.8*cm,
+                            topMargin=1*cm, bottomMargin=1*cm)
 
     styles = getSampleStyleSheet()
-    title_s = ParagraphStyle("t", fontSize=13, textColor=C_AZUL, fontName="Helvetica-Bold")
-    sub_s   = ParagraphStyle("s", fontSize=9,  textColor=colors.grey)
+    title_s = ParagraphStyle("t", fontSize=11, textColor=C_AZUL, fontName="Helvetica-Bold")
+    sub_s   = ParagraphStyle("s", fontSize=8,  textColor=colors.grey)
 
     periodo_lbl = f"21 {MESES[month]} → 20 {MESES[mes_fin]} {año_fin}"
     story = [
-        Paragraph("HORAS EXTRAS · COLBEEF", title_s),
+        Paragraph("HORAS EXTRAS · COLBEEF - SOATEC", title_s),
         Paragraph(f"{tec.nombre}  |  {tec.cargo}  |  Periodo: {periodo_lbl}", sub_s),
-        Spacer(1, 0.4*cm),
+        Spacer(1, 0.3*cm),
     ]
 
     # Encabezado tabla
     headers = ["#","Fecha","Entrada","Salida","Desc.","Observación",
                "H.Trab","OT","HED","HEN","RNO","HEFD","HEFN","RFD","RFN"]
-    col_w   = [0.6,2.6,1.3,1.3,0.9,3.2,1.1,1.1,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+    col_w   = [0.5,2.4,1.2,1.2,0.8,3.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
     col_w_cm= [x*cm for x in col_w]
 
     tabla_data = [headers]
@@ -128,15 +129,7 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
 
             fila += 1
 
-        # Fila subtotal semana
         for k in sub_acum: sub_acum[k] += sum(item["resultado"][k] for item in sem["rows"])
-        ot_str = f"{ot_sem:+.1f}h" if ot_sem != 0 else "0.0h"
-        tabla_data.append(["","","","","",f"SEMANA  H:{sem['horas_semana']:.1f}",
-                           "","" + ot_str,"","","","","","",""])
-        row_styles.append(("BACKGROUND", (0,fila),(-1,fila), colors.HexColor("#e8f5e9")))
-        row_styles.append(("FONTNAME",   (0,fila),(-1,fila), "Helvetica-Bold"))
-        row_styles.append(("FONTSIZE",   (0,fila),(-1,fila), 7))
-        fila += 1
 
     # Fila SUBTOTAL PERIODO
     sub = calc["subtotales"]
