@@ -1,7 +1,6 @@
 // ── Planilla ──────────────────────────────────────────────────────────────────
 const PLAN = {
   data: null,
-  saving: {},
 
   initSelects() {
     const sel = document.getElementById("plan-tec-select");
@@ -73,7 +72,7 @@ const PLAN = {
       sem.rows.forEach(item => {
         rowNum++;
         const f   = new Date(item.fecha + "T00:00:00");
-        const dow = f.getDay(); // 0=Dom
+        const dow = f.getDay();
         const reg = item.registro;
         const res = item.resultado;
         const isDom  = dow === 0;
@@ -87,8 +86,12 @@ const PLAN = {
           </td>
           <td style="text-align:center;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">${rowNum}</td>
           <td class="fecha-cell">${dLabel}</td>
-          <td><input type="text" value="${reg.entrada||""}" placeholder="HH:MM" maxlength="5" onchange="PLAN.saveField('${item.fecha}','entrada',this.value)" onpaste="setTimeout(()=>PLAN.saveField('${item.fecha}','entrada',this.value),50)" style="text-transform:uppercase;letter-spacing:1px"></td>
-          <td><input type="text" value="${reg.salida||""}" placeholder="HH:MM" maxlength="5" onchange="PLAN.saveField('${item.fecha}','salida',this.value)" onpaste="setTimeout(()=>PLAN.saveField('${item.fecha}','salida',this.value),50)" style="text-transform:uppercase;letter-spacing:1px"></td>
+          <td><input type="text" value="${reg.entrada||""}" placeholder="HH:MM" maxlength="5"
+            onchange="PLAN.saveField('${item.fecha}','entrada',this.value)"
+            onpaste="setTimeout(()=>PLAN.saveField('${item.fecha}','entrada',this.value),50)"></td>
+          <td><input type="text" value="${reg.salida||""}" placeholder="HH:MM" maxlength="5"
+            onchange="PLAN.saveField('${item.fecha}','salida',this.value)"
+            onpaste="setTimeout(()=>PLAN.saveField('${item.fecha}','salida',this.value),50)"></td>
           <td><input type="number" value="${reg.descanso ? (reg.descanso/60).toFixed(1) : ''}" min="0" max="3" step="0.5" placeholder="0"
                onchange="PLAN.saveField('${item.fecha}','descanso',+this.value * 60)"></td>
           <td><select onchange="PLAN.saveField('${item.fecha}','observacion',this.value)">${obsOpts
@@ -97,19 +100,16 @@ const PLAN = {
           <td class="ot-cell" id="ot-${si}"></td>
           ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col => `
             <td class="he-val">
-              <input type="number" value="${fmt(res[col])||''}" min="0" max="24" step="0.1"
-                style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
-                color:${res[col]>0?'#008855':'inherit'}"
+              <input type="number" value="${reg[col]>0?fmt(reg[col]):''}" min="-24" max="24" step="0.1"
+                style="width:52px;padding:2px 4px;font-size:11px;text-align:center;color:${reg[col]>0?'#008855':reg[col]<0?'#cc0000':'inherit'}"
                 onchange="PLAN.saveHE('${item.fecha}','${col}',+this.value)"
                 onpaste="setTimeout(()=>PLAN.saveHE('${item.fecha}','${col}',+this.value),50)">
             </td>`).join('')}
         </tr>`;
       });
 
-      // Fila OT semana - mostrar rango de fechas
       const ot = sem.ot_semana;
       const otCls = ot > 0 ? "he-pos" : ot < 0 ? "he-neg" : "";
-      const semDias = sem.rows.filter(r => r.registro);
       const primerDia = sem.rows[0]?.fecha;
       const ultimoDia = sem.rows[sem.rows.length-1]?.fecha;
       const fmtRango = (f) => { if(!f) return ""; const d=new Date(f+"T00:00:00"); return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()+1].slice(0,3)}`; };
@@ -126,7 +126,6 @@ const PLAN = {
 
     body.innerHTML = html;
 
-    // Subtotales
     const sub = this.data.subtotales;
     foot.innerHTML = `<tr class="row-sub">
       <td colspan="7" style="text-align:right;padding-right:12px">SUBTOTAL PERIODO</td>
@@ -145,20 +144,14 @@ const PLAN = {
   async saveField(fecha, field, value) {
     const tecId = STATE.planTecId;
     if (!tecId) return;
-
-    // Construir el registro actual de esta fila
     const row = this.data?.semanas.flatMap(s => s.rows).find(r => r.fecha === fecha);
     const reg = row ? { ...row.registro } : {};
     reg[field] = value;
     reg.fecha  = fecha;
-
-    // Defaults
-    if (!reg.es_festivo) reg.es_festivo = false;
-    if (!reg.descanso)   reg.descanso   = 0;
-
+    if (reg.es_festivo === undefined || reg.es_festivo === null) reg.es_festivo = false;
+    if (!reg.descanso) reg.descanso = 0;
     try {
       await API.post(`/registros/${tecId}`, reg);
-      // Recargar para reflejar cálculos
       await this.cargar();
     } catch(e) { UI.toast("Error al guardar", "err"); }
   },
@@ -166,15 +159,8 @@ const PLAN = {
   async saveHE(fecha, campo, valor) {
     const tecId = STATE.planTecId;
     if (!tecId) return;
-    const row = this.data?.semanas.flatMap(s => s.rows).find(r => r.fecha === fecha);
-    const reg = row ? { ...row.registro } : {};
-    reg.fecha = fecha;
-    reg[campo] = valor;
-    if (!reg.es_festivo) reg.es_festivo = false;
-    if (!reg.descanso)   reg.descanso   = 0;
     try {
       await API.post(`/registros/${tecId}/manual`, { fecha, campo, valor });
-      await this.cargar();
     } catch(e) { UI.toast("Error al guardar HE", "err"); }
   },
 
