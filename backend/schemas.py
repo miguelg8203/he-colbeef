@@ -37,6 +37,7 @@ class TecnicoOut(TecnicoIn):
 
 class RegistroIn(BaseModel):
     fecha:       date
+    turno:       int            = 1
     es_festivo:  bool           = False
     entrada:     Optional[str]  = None
     salida:      Optional[str]  = None
