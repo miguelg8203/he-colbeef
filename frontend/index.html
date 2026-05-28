@@ -3,18 +3,139 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="/img/favicon.png">
-<title>HE · Colbeef - Soatec</title>
+<title>Time Xtra</title>
+<link rel="icon" type="image/jpeg" href="/img/LogoApp.jpeg">
 <link rel="stylesheet" href="/static/styles.css">
+<style>
+#view-login {
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(135deg, #0a1628 0%, #1a2a5e 50%, #0a1628 100%);
+}
+.login-card {
+  width:100%;
+  max-width:420px;
+  padding:24px;
+}
+.login-logo {
+  text-align:center;
+  margin-bottom:24px;
+}
+.login-logo img {
+  width:100%;
+  max-width:340px;
+  border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+.login-box {
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:24px;
+  backdrop-filter:blur(10px);
+}
+.emp-btn {
+  padding:12px 6px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all .2s;
+  font-family:'DM Mono',monospace;
+  border:2px solid transparent;
+  background:rgba(255,255,255,0.08);
+  color:rgba(255,255,255,0.6);
+}
+.emp-btn.active {
+  border-color:#00c885;
+  background:rgba(0,200,133,0.15);
+  color:#00c885;
+}
+.login-box label {
+  color:rgba(255,255,255,0.6);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.login-box input[type="password"] {
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.2);
+  color:#fff;
+  border-radius:6px;
+  padding:10px 12px;
+  width:100%;
+  font-size:14px;
+}
+.login-box input[type="password"]:focus {
+  outline:none;
+  border-color:#00c885;
+}
+.btn-login {
+  width:100%;
+  padding:12px;
+  background:linear-gradient(135deg,#00c885,#00a870);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:4px;
+}
+.btn-login:hover { opacity:.9; }
+#login-error {
+  display:none;
+  color:#ff6b6b;
+  font-size:12px;
+  text-align:center;
+  margin-top:10px;
+}
+.login-footer {
+  text-align:center;
+  margin-top:16px;
+  font-size:10px;
+  color:rgba(255,255,255,0.3);
+}
+</style>
 </head>
 <body>
 
-<!-- HEADER -->
+<!-- ══ LOGIN ══ -->
+<div id="view-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/img/LogoApp.jpeg" alt="Time Xtra">
+    </div>
+    <div class="login-box">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:14px;text-transform:uppercase;letter-spacing:.1em;">
+        Selecciona tu empresa
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+        <button class="emp-btn active" data-slug="colbeef" onclick="selectEmpresa('colbeef')">Colbeef</button>
+        <button class="emp-btn" data-slug="manzanares" onclick="selectEmpresa('manzanares')">Manzanares</button>
+        <button class="emp-btn" data-slug="vitelsa" onclick="selectEmpresa('vitelsa')">Vitelsa</button>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label>Contraseña</label>
+        <input type="password" id="login-pwd" placeholder="••••••••" style="margin-top:6px;">
+      </div>
+      <button class="btn-login" onclick="doLogin()">Ingresar →</button>
+      <div id="login-error">Empresa o contraseña incorrecta</div>
+    </div>
+    <div class="login-footer">Time Xtra · Miguel Gutierrez</div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app-container" style="display:none;">
+
 <header class="header">
   <div class="header-brand">
     <span class="brand-tag">gestor</span>
     <span class="brand-he">HE/</span>
-    <span class="brand-title">Horas Extras · Colbeef - Soatec</span>
+    <span class="brand-title" id="empresa-nombre">Time Xtra</span>
   </div>
   <nav class="nav" id="main-nav">
     <button class="nv active" data-view="tecnicos">👥 Técnicos</button>
@@ -22,40 +143,33 @@
     <button class="nv" data-view="resumen">💰 Resumen HE</button>
     <button class="nv" data-view="config">⚙️ Config</button>
   </nav>
+  <button onclick="cerrarSesion()" style="background:none;border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;margin-left:12px;">Salir</button>
 </header>
 
-<!-- VIEWS -->
 <main class="main">
 
-  <!-- ══ TÉCNICOS ══ -->
+  <!-- TÉCNICOS -->
   <section id="view-tecnicos" class="view active">
     <div class="view-header">
-      <div>
-        <h2>Técnicos</h2>
-        <p class="sub">Gestión del equipo</p>
+      <div><h2>Técnicos</h2><p class="sub">Gestión del equipo</p></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="TEC.openForm()">+ Nuevo técnico</button>
+        <button id="btn-toggle-inactivos" class="btn-outline" onclick="TEC.toggleInactivos()" style="opacity:0.6;font-size:11px;">👁 Ver ocultados</button>
       </div>
-      <button class="btn" onclick="UI.openModal('modal-tecnico')">+ Nuevo técnico</button>
     </div>
-
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
-      <input type="text" id="tec-search" placeholder="Buscar técnico..." oninput="TEC.filtrar()"
-        style="max-width:360px;flex:1;">
+      <input type="text" id="tec-search" placeholder="Buscar técnico..." oninput="TEC.filtrar()" style="max-width:360px;flex:1;">
       <div style="text-align:center;">
-        <img src="/img/marca_mg.png" alt="Miguel Gutierrez"
-          style="height:64px;object-fit:contain;border-radius:8px;opacity:0.92;">
+        <img src="/img/marca_mg.png" alt="Miguel Gutierrez" style="height:64px;object-fit:contain;border-radius:8px;opacity:0.92;">
       </div>
     </div>
-
     <div class="cards-grid" id="tec-grid"></div>
   </section>
 
-  <!-- ══ PLANILLA ══ -->
+  <!-- PLANILLA -->
   <section id="view-planilla" class="view">
     <div class="view-header">
-      <div>
-        <h2 id="plan-titulo">Planilla</h2>
-        <p class="sub" id="plan-periodo"></p>
-      </div>
+      <div><h2 id="plan-titulo">Planilla</h2><p class="sub" id="plan-periodo"></p></div>
       <div class="header-actions">
         <select id="plan-tec-select" onchange="PLAN.cargar()">
           <option value="">— Seleccionar técnico —</option>
@@ -65,17 +179,13 @@
           <span id="plan-period-lbl" class="period-lbl"></span>
           <button class="btn-g" onclick="PLAN.cambiarPeriodo(1)">›</button>
         </div>
-        <button class="btn-outline" id="btn-pdf-tec" onclick="PLAN.exportarPDF()" style="display:none">
-          ⬇ PDF
-        </button>
+        <button class="btn-outline" id="btn-pdf-tec" onclick="PLAN.exportarPDF()" style="display:none">⬇ PDF</button>
       </div>
     </div>
-
     <div id="plan-empty" class="empty-state">
       <div class="empty-icon">📋</div>
       <p>Selecciona un técnico para ver su planilla</p>
     </div>
-
     <div id="plan-table-wrap" style="display:none">
       <div class="legend">
         <span class="leg-item"><span class="dot dom"></span>Domingo</span>
@@ -87,22 +197,11 @@
         <table class="planilla-table" id="plan-table">
           <thead>
             <tr>
-              <th title="Festivo">F</th>
-              <th>#</th>
-              <th>Fecha</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-              <th>Desc.(h)</th>
-              <th>Observación</th>
-              <th>H.Trab</th>
+              <th title="Festivo">F</th><th>#</th><th>Fecha</th>
+              <th>Entrada</th><th>Salida</th><th>Desc.(h)</th>
+              <th>Observación</th><th>H.Trab</th>
               <th class="ot-col">OT Sem</th>
-              <th>HED</th>
-              <th>HEN</th>
-              <th>RNO</th>
-              <th>HEFD</th>
-              <th>HEFN</th>
-              <th>RFD</th>
-              <th>RFN</th>
+              <th>HED</th><th>HEN</th><th>RNO</th><th>HEFD</th><th>HEFN</th><th>RFD</th><th>RFN</th>
             </tr>
           </thead>
           <tbody id="plan-body"></tbody>
@@ -112,13 +211,10 @@
     </div>
   </section>
 
-  <!-- ══ RESUMEN HE ══ -->
+  <!-- RESUMEN -->
   <section id="view-resumen" class="view">
     <div class="view-header">
-      <div>
-        <h2>Resumen Horas Extras</h2>
-        <p class="sub" id="res-periodo"></p>
-      </div>
+      <div><h2>Resumen Horas Extras</h2><p class="sub" id="res-periodo"></p></div>
       <div class="header-actions">
         <div class="period-nav">
           <button class="btn-g" onclick="RES.cambiarPeriodo(-1)">‹</button>
@@ -129,23 +225,15 @@
         <button class="btn-outline" onclick="RES.exportarPDF()">⬇ PDF Resumen</button>
       </div>
     </div>
-
     <div class="table-wrap">
       <table class="res-table" id="res-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Nombre</th>
-            <th>Cargo</th>
-            <th>Sueldo</th>
-            <th>HED</th><th>Val HED</th>
-            <th>HEN</th><th>Val HEN</th>
-            <th>RNO</th><th>Val RNO</th>
-            <th>HEFD</th><th>Val HEFD</th>
-            <th>HEFN</th><th>Val HEFN</th>
-            <th>RFD</th><th>Val RFD</th>
-            <th>RFN</th><th>Val RFN</th>
-            <th>Neto a Pagar</th>
+            <th>#</th><th>Nombre</th><th>Cargo</th><th>Sueldo</th>
+            <th>HED</th><th>Val HED</th><th>HEN</th><th>Val HEN</th>
+            <th>RNO</th><th>Val RNO</th><th>HEFD</th><th>Val HEFD</th>
+            <th>HEFN</th><th>Val HEFN</th><th>RFD</th><th>Val RFD</th>
+            <th>RFN</th><th>Val RFN</th><th>Neto a Pagar</th>
           </tr>
         </thead>
         <tbody id="res-body"></tbody>
@@ -154,65 +242,45 @@
     </div>
   </section>
 
-  <!-- ══ CONFIG ══ -->
+  <!-- CONFIG -->
   <section id="view-config" class="view">
-    <div class="view-header">
-      <h2>Configuración</h2>
-    </div>
-
+    <div class="view-header"><h2>Configuración</h2></div>
     <div class="config-grid">
-      <!-- Config global -->
       <div class="card">
         <div class="card-title">⚙️ Configuración general</div>
         <div class="form-row">
-          <div class="form-group">
-            <label>Horas semanales</label>
-            <input type="number" id="cfg-horas" min="36" max="48" step="1">
-          </div>
-          <div class="form-group">
-            <label>Inicio diurno</label>
-            <input type="time" id="cfg-inicio">
-          </div>
-          <div class="form-group">
-            <label>Fin diurno</label>
-            <input type="time" id="cfg-fin">
-          </div>
+          <div class="form-group"><label>Horas semanales</label><input type="number" id="cfg-horas" min="36" max="48" step="1"></div>
+          <div class="form-group"><label>Inicio diurno</label><input type="time" id="cfg-inicio"></div>
+          <div class="form-group"><label>Fin diurno</label><input type="time" id="cfg-fin"></div>
         </div>
         <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;margin-top:-6px;">
-          <div style="font-size:11px;color:var(--text3)">
-            Jornada diaria (÷6):
+          <div style="font-size:11px;color:var(--text3);">Jornada diaria (÷6):
             <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h
           </div>
-          <div style="font-size:11px;color:var(--text3)">
-            Jornada mensual (×30):
+          <div style="font-size:11px;color:var(--text3);">Jornada mensual (×30):
             <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h
           </div>
         </div>
         <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
       </div>
-
-      <!-- Observaciones -->
       <div class="card">
         <div class="card-title">📋 Observaciones</div>
         <div class="obs-add-row">
           <input type="text" id="obs-nombre" placeholder="Nueva observación...">
           <input type="number" id="obs-horas" placeholder="H.fijas" min="0" max="24" step="0.5" style="width:90px">
-          <label class="check-label">
-            <input type="checkbox" id="obs-ot"> Cuenta OT
-          </label>
+          <label class="check-label"><input type="checkbox" id="obs-ot"> Cuenta OT</label>
           <button class="btn" onclick="CFG.addObs()">+ Agregar</button>
         </div>
-        <div class="obs-header">
-          <span>Nombre</span><span>H.Fijas</span><span>OT</span><span></span>
-        </div>
+        <div class="obs-header"><span>Nombre</span><span>H.Fijas</span><span>OT</span><span></span></div>
         <div id="obs-list"></div>
       </div>
     </div>
   </section>
 
 </main>
+</div>
 
-<!-- ══ MODAL TÉCNICO ══ -->
+<!-- MODALES -->
 <div class="modal-overlay" id="modal-tecnico">
   <div class="modal">
     <div class="modal-header">
@@ -221,24 +289,12 @@
     </div>
     <div class="modal-body">
       <input type="hidden" id="tec-id">
-      <div class="form-group">
-        <label>Nombre completo</label>
-        <input type="text" id="tec-nombre" placeholder="Ej. John Jairo Solano Jaimes">
-      </div>
+      <div class="form-group"><label>Nombre completo</label><input type="text" id="tec-nombre"></div>
       <div class="form-row">
-        <div class="form-group">
-          <label>Cédula</label>
-          <input type="text" id="tec-cedula" placeholder="1099364262">
-        </div>
-        <div class="form-group">
-          <label>Sueldo base</label>
-          <input type="number" id="tec-sueldo" placeholder="1750905" min="0">
-        </div>
+        <div class="form-group"><label>Cédula</label><input type="text" id="tec-cedula"></div>
+        <div class="form-group"><label>Sueldo base</label><input type="number" id="tec-sueldo" min="0"></div>
       </div>
-      <div class="form-group">
-        <label>Cargo</label>
-        <input type="text" id="tec-cargo" placeholder="Técnico de Mantenimiento Industrial">
-      </div>
+      <div class="form-group"><label>Cargo</label><input type="text" id="tec-cargo"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-g" onclick="UI.closeModal('modal-tecnico')">Cancelar</button>
@@ -247,16 +303,13 @@
   </div>
 </div>
 
-<!-- ══ MODAL CONFIRMAR ══ -->
 <div class="modal-overlay" id="modal-confirm">
   <div class="modal modal-sm">
     <div class="modal-header">
       <span>Confirmar</span>
       <button class="modal-close" onclick="UI.closeModal('modal-confirm')">✕</button>
     </div>
-    <div class="modal-body">
-      <p id="confirm-msg"></p>
-    </div>
+    <div class="modal-body"><p id="confirm-msg"></p></div>
     <div class="modal-footer">
       <button class="btn-g" onclick="UI.closeModal('modal-confirm')">Cancelar</button>
       <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
@@ -264,7 +317,6 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script src="/js/app.js"></script>
