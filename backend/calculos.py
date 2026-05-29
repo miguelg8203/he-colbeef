@@ -96,6 +96,8 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             dom_entrada=reg_dom.get("entrada","")
             if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
                 rno=4.0
+                # Cuando RNO=4, HEN=4 (total nocturno = 8h)
+                res["hen"]=4.0
             else:
                 rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
         elif dw==6 and F==hn("22:00"): rno=max(0,(min(G_adj,1.0)-hn("22:00"))*24)
