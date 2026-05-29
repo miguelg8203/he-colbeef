@@ -77,6 +77,7 @@ document.querySelectorAll(".nv").forEach(btn => {
     document.getElementById("view-"+v).classList.add("active");
     if(v==="planilla") PLAN.init();
     if(v==="resumen")  RES.init();
+    if(v==="dashboard") DASH.init();
     if(v==="config")   CFG.init();
   });
 });
