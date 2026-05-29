@@ -16,13 +16,16 @@ def _obs(empresa_id, db):
     return {o.nombre.upper():{"horas_fijas":o.horas_fijas,"cuenta_ot":o.cuenta_ot} for o in obs}
 
 def _regs(tecnico_id, year, month, db):
-    """Retorna dict {fecha: [registro1, registro2...]} soportando múltiples turnos."""
     mes_fin = month+1 if month<12 else 1
     año_fin = year if month<12 else year+1
+    inicio  = date(year, month, 21)
+    fin     = date(año_fin, mes_fin, 20)
+    inicio_ext = inicio - timedelta(days=7)
+
     rows = db.query(Registro).filter(
         Registro.tecnico_id==tecnico_id,
-        Registro.fecha>=date(year,month,21),
-        Registro.fecha<=date(año_fin,mes_fin,20),
+        Registro.fecha>=inicio_ext,
+        Registro.fecha<=fin,
     ).order_by(Registro.fecha, Registro.turno).all()
 
     result = {}
@@ -41,10 +44,6 @@ def _regs(tecnico_id, year, month, db):
 
 
 def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
-    """
-    Versión de calcular_periodo que soporta múltiples turnos por día.
-    registros_multi: {fecha: [reg1, reg2...]}
-    """
     from datetime import date as date_type
     inicio = date_type(year, month, 21)
     mes_fin = month+1 if month<12 else 1
@@ -57,7 +56,6 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
         dias.append(d)
         d += timedelta(days=1)
 
-    # Agrupar Dom→Sáb
     semanas = {}
     for d in dias:
         dow = d.weekday()
@@ -66,7 +64,6 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
             semanas[dom] = []
         semanas[dom].append(d)
 
-    # Registro simple para calculos (primer turno por fecha para compatibilidad)
     registros_simple = {}
     for fecha, regs in registros_multi.items():
         registros_simple[fecha] = regs[0] if regs else {}
