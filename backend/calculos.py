@@ -87,8 +87,8 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             rno=max(0,(G_adj-F)*24-des_h); res["rno"]=round(rno,1)
             for k in ["hed","hen","hefd","hefn","rfd","rfn","horas_trab"]: res[k]=round(res[k],1)
             return res
-        if dw==5 and F==hn("22:00"):
-            # CORREGIDO: domingo ANTERIOR (inicio semana) = Vie - 5 dias
+        if dw==5 and F==hn("22:00") and not B:
+            # Solo aplica si NO es festivo
             dom_fecha = fecha - timedelta(days=5)
             reg_dom=(registros_todos or {}).get(dom_fecha,{})
             if not reg_dom and registros_todos:
@@ -96,10 +96,11 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             dom_entrada=reg_dom.get("entrada","")
             if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
                 rno=4.0
-                # Cuando RNO=4, HEN=4 (total nocturno = 8h)
                 res["hen"]=4.0
             else:
                 rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
+        elif dw==5 and F==hn("22:00") and B:
+            rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24)
         elif dw==6 and F==hn("22:00"): rno=max(0,(min(G_adj,1.0)-hn("22:00"))*24)
         elif dw==6: rno=0.0
         elif dw==7 and F==hn("22:00"): rno=max(0,(G_adj-1.0)*24)
