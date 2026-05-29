@@ -56,6 +56,15 @@ const PLAN = {
     } catch(e) { UI.toast("Error al cargar planilla","err"); }
   },
 
+  _horaOpts(sel) {
+    const horas = [];
+    for(let h=1;h<=24;h++){
+      horas.push(`${String(h).padStart(2,'0')}:00`);
+      if(h<24) horas.push(`${String(h).padStart(2,'0')}:30`);
+    }
+    return '<option value=""></option>' + horas.map(h=>`<option value="${h}"${sel===h?' selected':''}>${h}</option>`).join('');
+  },
+
   render() {
     const body = document.getElementById("plan-body");
     const foot = document.getElementById("plan-foot");
@@ -100,14 +109,8 @@ const PLAN = {
           }
 
           html+=`
-          <td><input type="text" value="${reg.entrada||""}" placeholder="HH:MM" maxlength="5"
-            onkeypress="return /[0-9:]/.test(event.key)"
-            onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)"
-            onpaste="setTimeout(()=>PLAN.saveField('${fecha}',${turno},'entrada',this.value),50)"></td>
-          <td><input type="text" value="${reg.salida||""}" placeholder="HH:MM" maxlength="5"
-            onkeypress="return /[0-9:]/.test(event.key)"
-            onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)"
-            onpaste="setTimeout(()=>PLAN.saveField('${fecha}',${turno},'salida',this.value),50)"></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
           <td><input type="number" value="${reg.descanso?(reg.descanso/60).toFixed(1):''}" min="0" max="3" step="0.5" placeholder="0"
             onchange="PLAN.saveField('${fecha}',${turno},'descanso',+this.value*60)"></td>
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'observacion',this.value)">${obsOpts
