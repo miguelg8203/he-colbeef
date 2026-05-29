@@ -66,7 +66,6 @@ const PLAN = {
     let html="", rowNum=0;
 
     this.data.semanas.forEach((sem,si)=>{
-      // Agrupar filas por fecha
       const porFecha = {};
       sem.rows.forEach(item=>{
         if(!porFecha[item.fecha]) porFecha[item.fecha]=[];
@@ -84,11 +83,9 @@ const PLAN = {
           const isFest=reg.es_festivo;
           const cls=isDom?"row-dom":isFest?"row-fest":"";
           const turno=reg.turno||1;
-          const esUltimoTurno=idx===items.length-1;
 
           html+=`<tr class="${cls}" data-fecha="${fecha}" data-turno="${turno}">`;
 
-          // Checkbox festivo solo en primer turno
           if(idx===0) {
             html+=`<td style="text-align:center" rowspan="${items.length}">
               <input type="checkbox" ${isFest?"checked":""} onchange="PLAN.saveFestivo('${fecha}',this.checked)">
@@ -104,9 +101,11 @@ const PLAN = {
 
           html+=`
           <td><input type="text" value="${reg.entrada||""}" placeholder="HH:MM" maxlength="5"
+            onkeypress="return /[0-9:]/.test(event.key)"
             onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)"
             onpaste="setTimeout(()=>PLAN.saveField('${fecha}',${turno},'entrada',this.value),50)"></td>
           <td><input type="text" value="${reg.salida||""}" placeholder="HH:MM" maxlength="5"
+            onkeypress="return /[0-9:]/.test(event.key)"
             onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)"
             onpaste="setTimeout(()=>PLAN.saveField('${fecha}',${turno},'salida',this.value),50)"></td>
           <td><input type="number" value="${reg.descanso?(reg.descanso/60).toFixed(1):''}" min="0" max="3" step="0.5" placeholder="0"
@@ -117,13 +116,12 @@ const PLAN = {
           <td class="ot-cell"></td>
           ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col=>`
             <td class="he-val">
-              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1"
-                style="width:52px;padding:2px 4px;font-size:11px;text-align:center;color:${(reg[col]||res[col])>0?'#008855':(reg[col]||res[col])<0?'#cc0000':'inherit'}"
-                onchange="PLAN.saveHE('${fecha}',${turno},'${col}',+this.value)"
-                onpaste="setTimeout(()=>PLAN.saveHE('${fecha}',${turno},'${col}',+this.value),50)">
+              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1" readonly
+                style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
+                color:${(reg[col]||res[col])>0?'#008855':(reg[col]||res[col])<0?'#cc0000':'inherit'};
+                background:var(--bg2);cursor:default;">
             </td>`).join('')}`;
 
-          // Botón eliminar turno extra
           if(turno>1) {
             html+=`<td style="text-align:center">
               <button onclick="PLAN.delTurno(${item.registro.id},'${fecha}')"
@@ -162,7 +160,6 @@ const PLAN = {
 
   async saveFestivo(fecha, value) {
     const tecId=STATE.planTecId; if(!tecId) return;
-    // Actualizar festivo en todos los turnos del día
     const rows = this.data?.semanas.flatMap(s=>s.rows).filter(r=>r.fecha===fecha) || [];
     for(const item of rows) {
       const turno = item.registro.turno||1;
