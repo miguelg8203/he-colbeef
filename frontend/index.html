@@ -82,6 +82,7 @@
     <button class="nv" data-view="planilla">📋 Planilla</button>
     <button class="nv" data-view="resumen">💰 Resumen HE</button>
     <button class="nv" data-view="dashboard">📊 Dashboard</button>
+    <button class="nv" data-view="dashboard">📊 Dashboard</button>
     <button class="nv" data-view="config">⚙️ Config</button>
   </nav>
   <button onclick="cerrarSesion()" style="background:none;border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;margin-left:12px;">Salir</button>
@@ -119,6 +120,7 @@
           <button class="btn-g" onclick="PLAN.cambiarPeriodo(1)">›</button>
         </div>
         <button class="btn-outline" id="btn-pdf-tec" onclick="PLAN.exportarPDF()" style="display:none">⬇ PDF</button>
+        <button class="btn-outline" id="btn-editar-he" onclick="PLAN.toggleHE()" style="display:none;font-size:11px;">🔓 Editar HE</button>
       </div>
     </div>
     <div id="plan-empty" class="empty-state"><div class="empty-icon">📋</div><p>Selecciona un técnico para ver su planilla</p></div>
