@@ -68,6 +68,8 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
     for fecha, regs in registros_multi.items():
         registros_simple[fecha] = regs[0] if regs else {}
 
+    cols_he = ["hed","hen","rno","hefd","hefn","rfd","rfn"]
+
     semanas_result = []
     for dom in sorted(semanas.keys()):
         dias_sem = semanas[dom]
@@ -81,7 +83,15 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
 
             filas_dia = []
             for reg in turnos:
+                # Calcular resultado automático
                 res = calcular_fila(fecha, reg, obs_map, registros_todos=registros_simple)
+
+                # Si el registro tiene HE guardados manualmente, usarlos
+                tiene_manual = any(reg.get(c, 0) for c in cols_he)
+                if tiene_manual:
+                    for c in cols_he:
+                        res[c] = reg.get(c, 0) or 0.0
+
                 filas_dia.append({
                     "fecha": fecha.isoformat(),
                     "resultado": res,
@@ -101,7 +111,7 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
         sub["ot_total"]    += sem["ot_semana"]
         sub["horas_total"] += sem["horas_semana"]
         for row in sem["rows"]:
-            for col in ["hed","hen","rno","hefd","hefn","rfd","rfn"]:
+            for col in cols_he:
                 sub[col] += row["resultado"][col]
     for k in sub:
         sub[k] = round(sub[k], 1)
