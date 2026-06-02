@@ -26,7 +26,14 @@ def guardar(tecnico_id: int, r: RegistroIn, db: Session = Depends(get_db)):
     ).first()
     data = r.model_dump()
     data["tecnico_id"] = tecnico_id
-    if obj and any([obj.hed,obj.hen,obj.rno,obj.hefd,obj.hefn,obj.rfd,obj.rfn]):
+
+    # Si no hay entrada O no hay salida → limpiar HE
+    if not r.entrada or not r.salida:
+        data["hed"]=data["hen"]=data["rno"]=0.0
+        data["hefd"]=data["hefn"]=data["rfd"]=data["rfn"]=0.0
+        data["horas_trab"]=0.0
+    elif obj and any([obj.hed,obj.hen,obj.rno,obj.hefd,obj.hefn,obj.rfd,obj.rfn]):
+        # Conservar HE manuales si ya existen y hay horario
         data["hed"]=obj.hed; data["hen"]=obj.hen; data["rno"]=obj.rno
         data["hefd"]=obj.hefd; data["hefn"]=obj.hefn
         data["rfd"]=obj.rfd; data["rfn"]=obj.rfn
@@ -35,6 +42,7 @@ def guardar(tecnico_id: int, r: RegistroIn, db: Session = Depends(get_db)):
         data["hed"]=data["hen"]=data["rno"]=0.0
         data["hefd"]=data["hefn"]=data["rfd"]=data["rfn"]=0.0
         data["horas_trab"]=0.0
+
     if obj:
         for k,v in data.items(): setattr(obj,k,v)
     else:
@@ -43,9 +51,7 @@ def guardar(tecnico_id: int, r: RegistroIn, db: Session = Depends(get_db)):
 
 @router.post("/{tecnico_id}/add_turno")
 def agregar_turno(tecnico_id: int, data: dict, db: Session = Depends(get_db)):
-    """Agrega un turno extra a una fecha existente."""
     fecha = date.fromisoformat(str(data["fecha"]))
-    # Buscar el último turno del día
     ultimo = db.query(Registro).filter(
         Registro.tecnico_id==tecnico_id,
         Registro.fecha==fecha
@@ -62,13 +68,11 @@ def agregar_turno(tecnico_id: int, data: dict, db: Session = Depends(get_db)):
 
 @router.delete("/{tecnico_id}/turno/{registro_id}")
 def eliminar_turno(tecnico_id: int, registro_id: int, db: Session = Depends(get_db)):
-    """Elimina un turno específico."""
     obj = db.query(Registro).filter(
         Registro.id==registro_id,
         Registro.tecnico_id==tecnico_id
     ).first()
     if not obj: raise HTTPException(404)
-    # No eliminar si es el único turno del día
     count = db.query(Registro).filter(
         Registro.tecnico_id==tecnico_id,
         Registro.fecha==obj.fecha
