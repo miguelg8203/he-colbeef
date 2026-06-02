@@ -1,5 +1,27 @@
 const PLAN = {
   data: null,
+  heDesbloqueado: false,
+
+  toggleHE() {
+    if(!this.heDesbloqueado) {
+      const clave = prompt("Clave para editar HE:");
+      if(clave !== "1234") { UI.toast("Clave incorrecta","err"); return; }
+      this.heDesbloqueado = true;
+    } else {
+      this.heDesbloqueado = false;
+    }
+    const btn = document.getElementById("btn-editar-he");
+    if(btn) {
+      btn.textContent = this.heDesbloqueado ? "🔒 Bloquear HE" : "🔓 Editar HE";
+      btn.style.borderColor = this.heDesbloqueado ? "#cc0000" : "";
+      btn.style.color = this.heDesbloqueado ? "#cc0000" : "";
+    }
+    document.querySelectorAll(".he-editable").forEach(inp => {
+      inp.readOnly = !this.heDesbloqueado;
+      inp.style.background = this.heDesbloqueado ? "" : "var(--bg2)";
+      inp.style.cursor = this.heDesbloqueado ? "text" : "default";
+    });
+  },
 
   initSelects() {
     const sel = document.getElementById("plan-tec-select");
@@ -40,6 +62,7 @@ const PLAN = {
       document.getElementById("plan-empty").style.display="block";
       document.getElementById("plan-table-wrap").style.display="none";
       document.getElementById("btn-pdf-tec").style.display="none";
+      document.getElementById("btn-editar-he").style.display="none";
       return;
     }
     STATE.planTecId = +tecId;
@@ -53,7 +76,6 @@ const PLAN = {
       document.getElementById("plan-empty").style.display="none";
       document.getElementById("plan-table-wrap").style.display="block";
       document.getElementById("btn-pdf-tec").style.display="inline-block";
-      document.getElementById("btn-editar-he").style.display="inline-block";
       document.getElementById("btn-editar-he").style.display="inline-block";
     } catch(e) { UI.toast("Error al cargar planilla","err"); }
   },
@@ -121,10 +143,13 @@ const PLAN = {
           <td class="ot-cell"></td>
           ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col=>`
             <td class="he-val">
-              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1" readonly
+              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1"
+                class="he-editable"
+                ${PLAN.heDesbloqueado?'':'readonly'}
                 style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
                 color:${(reg[col]||res[col])>0?'#008855':(reg[col]||res[col])<0?'#cc0000':'inherit'};
-                background:var(--bg2);cursor:default;">
+                background:${PLAN.heDesbloqueado?'':'var(--bg2)'};cursor:${PLAN.heDesbloqueado?'text':'default'};"
+                onchange="PLAN.saveHE('${fecha}',${turno},'${col}',+this.value)">
             </td>`).join('')}`;
 
           if(turno>1) {
