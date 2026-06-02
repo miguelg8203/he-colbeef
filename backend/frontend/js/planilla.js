@@ -1,29 +1,6 @@
 const PLAN = {
   data: null,
-  heDesbloqueado: false,
- 
-  toggleHE() {
-    if(!this.heDesbloqueado) {
-      const clave = prompt("Clave para editar HE:");
-      if(clave !== "1234") { UI.toast("Clave incorrecta","err"); return; }
-      this.heDesbloqueado = true;
-    } else {
-      this.heDesbloqueado = false;
-    }
-    const btn = document.getElementById("btn-editar-he");
-    if(btn) {
-      btn.textContent = this.heDesbloqueado ? "🔒 Bloquear HE" : "🔓 Editar HE";
-      btn.style.borderColor = this.heDesbloqueado ? "#cc0000" : "";
-      btn.style.color = this.heDesbloqueado ? "#cc0000" : "";
-    }
-    // Toggle readonly on all HE inputs
-    document.querySelectorAll(".he-editable").forEach(inp => {
-      inp.readOnly = !this.heDesbloqueado;
-      inp.style.background = this.heDesbloqueado ? "" : "var(--bg2)";
-      inp.style.cursor = this.heDesbloqueado ? "text" : "default";
-    });
-  },
- 
+
   initSelects() {
     const sel = document.getElementById("plan-tec-select");
     const cur = sel.value;
@@ -32,7 +9,7 @@ const PLAN = {
     if(cur) sel.value = cur;
     this._updatePeriodLabel();
   },
- 
+
   init() {
     this.initSelects();
     this._updatePeriodLabel();
@@ -41,13 +18,13 @@ const PLAN = {
       this.cargar();
     }
   },
- 
+
   _updatePeriodLabel() {
     const {y,m} = STATE.planPeriod;
     document.getElementById("plan-period-lbl").textContent = periodLabel(y,m);
     document.getElementById("plan-periodo").textContent = "Periodo: " + periodLabel(y,m);
   },
- 
+
   cambiarPeriodo(delta) {
     let {y,m} = STATE.planPeriod;
     m+=delta;
@@ -56,7 +33,7 @@ const PLAN = {
     this._updatePeriodLabel();
     if(document.getElementById("plan-tec-select").value) this.cargar();
   },
- 
+
   async cargar() {
     const tecId = document.getElementById("plan-tec-select").value;
     if(!tecId) {
@@ -77,8 +54,9 @@ const PLAN = {
       document.getElementById("plan-table-wrap").style.display="block";
       document.getElementById("btn-pdf-tec").style.display="inline-block";
       document.getElementById("btn-editar-he").style.display="inline-block";
-      } catch(e) { UI.toast("Error al cargar planilla","err"); },
- 
+    } catch(e) { UI.toast("Error al cargar planilla","err"); }
+  },
+
   _horaOpts(sel) {
     const horas = [];
     for(let h=1;h<=24;h++){
@@ -87,37 +65,37 @@ const PLAN = {
     }
     return '<option value=""></option>' + horas.map(h=>`<option value="${h}"${sel===h?' selected':''}>${h}</option>`).join('');
   },
- 
+
   render() {
     const body = document.getElementById("plan-body");
     const foot = document.getElementById("plan-foot");
     const obs  = STATE.observaciones;
     const obsOpts = `<option value=""></option>` +
       obs.map(o=>`<option value="${o.nombre}">${o.nombre}</option>`).join("");
- 
+
     let html="", rowNum=0;
- 
+
     this.data.semanas.forEach((sem,si)=>{
       const porFecha = {};
       sem.rows.forEach(item=>{
         if(!porFecha[item.fecha]) porFecha[item.fecha]=[];
         porFecha[item.fecha].push(item);
       });
- 
+
       Object.entries(porFecha).forEach(([fecha, items])=>{
         rowNum++;
         const f=new Date(fecha+"T00:00:00"), dow=f.getDay();
         const isDom=dow===0;
         const dLabel=`${DIAS[dow]} ${f.getDate()} ${MESES[f.getMonth()+1].slice(0,3)}`;
- 
+
         items.forEach((item, idx)=>{
           const reg=item.registro, res=item.resultado;
           const isFest=reg.es_festivo;
           const cls=isDom?"row-dom":isFest?"row-fest":"";
           const turno=reg.turno||1;
- 
+
           html+=`<tr class="${cls}" data-fecha="${fecha}" data-turno="${turno}">`;
- 
+
           if(idx===0) {
             html+=`<td style="text-align:center" rowspan="${items.length}">
               <input type="checkbox" ${isFest?"checked":""} onchange="PLAN.saveFestivo('${fecha}',this.checked)">
@@ -130,7 +108,7 @@ const PLAN = {
                 border-radius:3px;cursor:pointer;font-size:9px;padding:1px 5px;">+</button>
             </td>`;
           }
- 
+
           html+=`
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
@@ -142,15 +120,12 @@ const PLAN = {
           <td class="ot-cell"></td>
           ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col=>`
             <td class="he-val">
-              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1"
-                class="he-editable"
-                ${PLAN.heDesbloqueado?'':'readonly'}
+              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1" readonly
                 style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
                 color:${(reg[col]||res[col])>0?'#008855':(reg[col]||res[col])<0?'#cc0000':'inherit'};
-                background:${PLAN.heDesbloqueado?'':'var(--bg2)'};cursor:${PLAN.heDesbloqueado?'text':'default'};"
-                onchange="PLAN.saveHE('${fecha}',${turno},'${col}',+this.value)">
+                background:var(--bg2);cursor:default;">
             </td>`).join('')}`;
- 
+
           if(turno>1) {
             html+=`<td style="text-align:center">
               <button onclick="PLAN.delTurno(${item.registro.id},'${fecha}')"
@@ -159,11 +134,11 @@ const PLAN = {
           } else {
             html+=`<td></td>`;
           }
- 
+
           html+=`</tr>`;
         });
       });
- 
+
       const ot=sem.ot_semana, otCls=ot>0?"he-pos":ot<0?"he-neg":"";
       const p1=sem.rows[0]?.fecha, p2=sem.rows[sem.rows.length-1]?.fecha;
       const fr=(f)=>{if(!f)return"";const d=new Date(f+"T00:00:00");return`${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()+1].slice(0,3)}`;};
@@ -173,7 +148,7 @@ const PLAN = {
         <td colspan="8"></td>
       </tr>`;
     });
- 
+
     body.innerHTML=html;
     const sub=this.data.subtotales;
     foot.innerHTML=`<tr class="row-sub">
@@ -186,7 +161,7 @@ const PLAN = {
       <td class="he-val">${fmt(sub.rfn)}</td><td></td>
     </tr>`;
   },
- 
+
   async saveFestivo(fecha, value) {
     const tecId=STATE.planTecId; if(!tecId) return;
     const rows = this.data?.semanas.flatMap(s=>s.rows).filter(r=>r.fecha===fecha) || [];
@@ -198,7 +173,7 @@ const PLAN = {
     }
     await this.cargar();
   },
- 
+
   async saveField(fecha, turno, field, value) {
     const tecId=STATE.planTecId; if(!tecId) return;
     const row=this.data?.semanas.flatMap(s=>s.rows).find(r=>r.fecha===fecha&&(r.registro.turno||1)===turno);
@@ -211,14 +186,14 @@ const PLAN = {
       await this.cargar();
     } catch(e){UI.toast("Error al guardar","err");}
   },
- 
+
   async saveHE(fecha, turno, campo, valor) {
     const tecId=STATE.planTecId; if(!tecId) return;
     try {
       await API.post(`/registros/${tecId}/manual`,{fecha,turno,campo,valor});
     } catch(e){UI.toast("Error al guardar HE","err");}
   },
- 
+
   async addTurno(fecha) {
     const tecId=STATE.planTecId; if(!tecId) return;
     try {
@@ -226,7 +201,7 @@ const PLAN = {
       await this.cargar();
     } catch(e){UI.toast("Error al agregar turno","err");}
   },
- 
+
   async delTurno(registroId, fecha) {
     const tecId=STATE.planTecId; if(!tecId) return;
     UI.confirm(`¿Eliminar este turno del ${fecha}?`, async()=>{
@@ -237,7 +212,7 @@ const PLAN = {
       } catch(e){UI.toast(e.message||"Error","err");}
     });
   },
- 
+
   exportarPDF() {
     const {y,m}=STATE.planPeriod, tecId=STATE.planTecId;
     if(!tecId) return;
