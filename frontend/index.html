@@ -21,7 +21,6 @@
 .btn-login:hover{opacity:.9}
 #login-error{display:none;color:#ff6b6b;font-size:12px;text-align:center;margin-top:10px}
 .login-footer{text-align:center;margin-top:16px;font-size:10px;color:rgba(255,255,255,0.3)}
-/* Dashboard */
 .dash-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
 .dash-metric{background:var(--bg2);border-radius:6px;padding:1rem}
 .dash-metric-label{font-size:12px;color:var(--text3);margin-bottom:4px}
@@ -37,11 +36,6 @@
 .dash-tabla th{text-align:left;padding:6px 8px;font-weight:600;color:var(--text3);border-bottom:0.5px solid var(--border)}
 .dash-tabla td{padding:6px 8px;border-bottom:0.5px solid var(--border);color:var(--text)}
 .dash-tabla tr:last-child td{border-bottom:none}
-.badge-up{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#e8f5e9;color:#1b7a3e}
-.badge-dn{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#fdecea;color:#b71c1c}
-.dash-selector{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
-.dash-selector button{font-size:11px;padding:4px 12px;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;background:none;color:var(--text3)}
-.dash-selector button.act{background:#e3f2fd;color:#1565c0;border-color:#1565c0}
 </style>
 </head>
 <body>
@@ -82,7 +76,7 @@
     <button class="nv" data-view="planilla">📋 Planilla</button>
     <button class="nv" data-view="resumen">💰 Resumen HE</button>
     <button class="nv" data-view="dashboard">📊 Dashboard</button>
-    <button class="nv" data-view="dashboard">📊 Dashboard</button>
+    <button class="nv" data-view="dashboard2">📋 Novedades</button>
     <button class="nv" data-view="config">⚙️ Config</button>
   </nav>
   <button onclick="cerrarSesion()" style="background:none;border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;margin-left:12px;">Salir</button>
@@ -101,9 +95,7 @@
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
       <input type="text" id="tec-search" placeholder="Buscar técnico..." oninput="TEC.filtrar()" style="max-width:360px;flex:1;">
-      <div style="text-align:center;">
-        <img src="/img/marca_mg.png" alt="Miguel Gutierrez" style="height:64px;object-fit:contain;border-radius:8px;opacity:0.92;">
-      </div>
+      <div style="text-align:center;"><img src="/img/marca_mg.png" alt="Miguel Gutierrez" style="height:64px;object-fit:contain;border-radius:8px;opacity:0.92;"></div>
     </div>
     <div class="cards-grid" id="tec-grid"></div>
   </section>
@@ -192,30 +184,12 @@
         <button class="btn" onclick="DASH.cargar()">🔄 Actualizar</button>
       </div>
     </div>
-    <!-- Métricas -->
     <div class="dash-metrics">
-      <div class="dash-metric">
-        <div class="dash-metric-label">Total horas extras</div>
-        <div class="dash-metric-val" id="dash-total-h">—</div>
-        <div class="dash-metric-sub" id="dash-total-h-sub"></div>
-      </div>
-      <div class="dash-metric">
-        <div class="dash-metric-label">Neto a pagar</div>
-        <div class="dash-metric-val" id="dash-neto" style="font-size:18px">—</div>
-        <div class="dash-metric-sub" id="dash-neto-sub"></div>
-      </div>
-      <div class="dash-metric">
-        <div class="dash-metric-label">Mayor costo</div>
-        <div class="dash-metric-val" id="dash-top-tec" style="font-size:16px">—</div>
-        <div class="dash-metric-sub" id="dash-top-tec-sub"></div>
-      </div>
-      <div class="dash-metric">
-        <div class="dash-metric-label">Categoría líder</div>
-        <div class="dash-metric-val" id="dash-cat-lider" style="font-size:16px">—</div>
-        <div class="dash-metric-sub" id="dash-cat-lider-sub"></div>
-      </div>
+      <div class="dash-metric"><div class="dash-metric-label">Total horas extras</div><div class="dash-metric-val" id="dash-total-h">—</div><div class="dash-metric-sub" id="dash-total-h-sub"></div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Neto a pagar</div><div class="dash-metric-val" id="dash-neto" style="font-size:18px">—</div><div class="dash-metric-sub" id="dash-neto-sub"></div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Mayor costo</div><div class="dash-metric-val" id="dash-top-tec" style="font-size:16px">—</div><div class="dash-metric-sub" id="dash-top-tec-sub"></div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Categoría líder</div><div class="dash-metric-val" id="dash-cat-lider" style="font-size:16px">—</div><div class="dash-metric-sub" id="dash-cat-lider-sub"></div></div>
     </div>
-    <!-- Gráficas -->
     <div class="dash-charts">
       <div class="dash-card">
         <div class="dash-card-title">Horas por categoría</div>
@@ -227,27 +201,51 @@
         <div style="position:relative;height:220px"><canvas id="dash-chart2" role="img" aria-label="Top técnicos"></canvas></div>
       </div>
     </div>
-    <!-- Tabla -->
     <div class="dash-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-        <div class="dash-card-title" style="margin:0">Detalle por técnico</div>
-      </div>
       <div style="overflow-x:auto">
         <table class="dash-tabla" id="dash-tabla">
-          <thead>
-            <tr>
-              <th>#</th><th>Técnico</th>
-              <th style="text-align:right">HED</th><th style="text-align:right">HEN</th>
-              <th style="text-align:right">RNO</th><th style="text-align:right">HEFD</th>
-              <th style="text-align:right">HEFN</th><th style="text-align:right">RFD</th>
-              <th style="text-align:right">RFN</th><th style="text-align:right">Total h</th>
-              <th style="text-align:right">Neto</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>#</th><th>Técnico</th>
+            <th style="text-align:right">HED</th><th style="text-align:right">HEN</th>
+            <th style="text-align:right">RNO</th><th style="text-align:right">HEFD</th>
+            <th style="text-align:right">HEFN</th><th style="text-align:right">RFD</th>
+            <th style="text-align:right">RFN</th><th style="text-align:right">Total h</th>
+            <th style="text-align:right">Neto</th>
+          </tr></thead>
           <tbody id="dash-tbody"></tbody>
         </table>
       </div>
     </div>
+  </section>
+
+  <!-- DASHBOARD 2 - NOVEDADES -->
+  <section id="view-dashboard2" class="view">
+    <div class="view-header">
+      <div><h2>Reporte de Novedades</h2><p class="sub" id="dash2-periodo"></p></div>
+      <div class="header-actions">
+        <div class="period-nav">
+          <button class="btn-g" onclick="DASH2.cambiarPeriodo(-1)">‹</button>
+          <span id="dash2-period-lbl" class="period-lbl"></span>
+          <button class="btn-g" onclick="DASH2.cambiarPeriodo(1)">›</button>
+        </div>
+        <button class="btn" onclick="DASH2.cargar()">🔄 Actualizar</button>
+      </div>
+    </div>
+    <div class="dash-metrics">
+      <div class="dash-metric"><div class="dash-metric-label">Total días novedad</div><div class="dash-metric-val" id="dash2-total">—</div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Incapacidades</div><div class="dash-metric-val" id="dash2-incap">—</div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Ausencias injust.</div><div class="dash-metric-val" id="dash2-ausencia">—</div></div>
+      <div class="dash-metric"><div class="dash-metric-label">Vacaciones</div><div class="dash-metric-val" id="dash2-vacas">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center;">
+      <select id="dash2-sel-tec" onchange="DASH2.filtrar()" style="font-size:13px;padding:6px 10px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg2);color:var(--text)">
+        <option value="">Todos los técnicos</option>
+      </select>
+      <select id="dash2-sel-obs" onchange="DASH2.filtrar()" style="font-size:13px;padding:6px 10px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg2);color:var(--text)">
+        <option value="">Todas las observaciones</option>
+      </select>
+    </div>
+    <div id="dash2-cards"></div>
   </section>
 
   <!-- CONFIG -->
@@ -262,12 +260,8 @@
           <div class="form-group"><label>Fin diurno</label><input type="time" id="cfg-fin"></div>
         </div>
         <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;margin-top:-6px;">
-          <div style="font-size:11px;color:var(--text3);">Jornada diaria (÷6):
-            <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h
-          </div>
-          <div style="font-size:11px;color:var(--text3);">Jornada mensual (×30):
-            <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h
-          </div>
+          <div style="font-size:11px;color:var(--text3);">Jornada diaria (÷6): <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h</div>
+          <div style="font-size:11px;color:var(--text3);">Jornada mensual (×30): <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h</div>
         </div>
         <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
       </div>
@@ -334,5 +328,6 @@
 <script src="/js/config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="/js/dashboard.js"></script>
+<script src="/js/dashboard2.js"></script>
 </body>
 </html>

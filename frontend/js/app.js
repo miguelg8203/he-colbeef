@@ -30,11 +30,11 @@ const API = {
 };
 
 const MESES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const DIAS  = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const DIAS  = ["Dom","Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b"];
 
 function periodLabel(y,m) {
   const em=m===12?1:m+1, ey=m===12?y+1:y;
-  return `21 ${MESES[m].slice(0,3)} → 20 ${MESES[em].slice(0,3)} ${ey}`;
+  return `21 ${MESES[m].slice(0,3)} \u2192 20 ${MESES[em].slice(0,3)} ${ey}`;
 }
 function currPeriod() {
   const n=new Date(), d=n.getDate(), mo=n.getMonth()+1, y=n.getFullYear();
@@ -75,10 +75,11 @@ document.querySelectorAll(".nv").forEach(btn => {
     document.querySelectorAll(".view").forEach(s => s.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("view-"+v).classList.add("active");
-    if(v==="planilla") PLAN.init();
-    if(v==="resumen")  RES.init();
-    if(v==="dashboard") DASH.init();
-    if(v==="config")   CFG.init();
+    if(v==="planilla")   PLAN.init();
+    if(v==="resumen")    RES.init();
+    if(v==="dashboard")  DASH.init();
+    if(v==="dashboard2") DASH2.init();
+    if(v==="config")     CFG.init();
   });
 });
 
@@ -102,8 +103,8 @@ async function doLogin() {
   try {
     const res = await API.post("/auth/login", {empresa: _loginEmpresa, password: pwd});
     STATE.empresa = res;
-    document.getElementById("empresa-nombre").textContent = `Time Xtra · ${res.empresa_nombre}`;
-    document.title = `Time Xtra · ${res.empresa_nombre}`;
+    document.getElementById("empresa-nombre").textContent = `Time Xtra \u00b7 ${res.empresa_nombre}`;
+    document.title = `Time Xtra \u00b7 ${res.empresa_nombre}`;
     document.getElementById("view-login").style.display = "none";
     document.getElementById("app-container").style.display = "block";
     await boot();

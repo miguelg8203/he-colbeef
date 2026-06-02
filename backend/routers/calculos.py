@@ -21,13 +21,11 @@ def _regs(tecnico_id, year, month, db):
     inicio  = date(year, month, 21)
     fin     = date(año_fin, mes_fin, 20)
     inicio_ext = inicio - timedelta(days=7)
-
     rows = db.query(Registro).filter(
         Registro.tecnico_id==tecnico_id,
         Registro.fecha>=inicio_ext,
         Registro.fecha<=fin,
     ).order_by(Registro.fecha, Registro.turno).all()
-
     result = {}
     for r in rows:
         reg_dict = {
@@ -49,73 +47,53 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
     mes_fin = month+1 if month<12 else 1
     año_fin = year if month<12 else year+1
     fin = date_type(año_fin, mes_fin, 20)
-
     dias = []
     d = inicio
     while d <= fin:
         dias.append(d)
         d += timedelta(days=1)
-
     semanas = {}
     for d in dias:
         dow = d.weekday()
         dom = d if dow == 6 else d - timedelta(days=dow+1)
-        if dom not in semanas:
-            semanas[dom] = []
+        if dom not in semanas: semanas[dom] = []
         semanas[dom].append(d)
-
     registros_simple = {}
     for fecha, regs in registros_multi.items():
         registros_simple[fecha] = regs[0] if regs else {}
-
     cols_he = ["hed","hen","rno","hefd","hefn","rfd","rfn"]
-
     semanas_result = []
     for dom in sorted(semanas.keys()):
         dias_sem = semanas[dom]
         min_acum = 0.0
         rows = []
-
         for fecha in dias_sem:
             turnos = registros_multi.get(fecha, [{}])
-            if not turnos:
-                turnos = [{}]
-
+            if not turnos: turnos = [{}]
             filas_dia = []
             for reg in turnos:
-                # Calcular resultado automático
                 res = calcular_fila(fecha, reg, obs_map, registros_todos=registros_simple)
-
-                # Si el registro tiene HE guardados manualmente, usarlos
                 tiene_manual = any(reg.get(c, 0) for c in cols_he)
                 if tiene_manual:
                     for c in cols_he:
                         res[c] = reg.get(c, 0) or 0.0
-
                 filas_dia.append({
                     "fecha": fecha.isoformat(),
                     "resultado": res,
                     "registro": {**reg, "fecha": fecha.isoformat()}
                 })
                 min_acum += res["min_dia"]
-
             rows.extend(filas_dia)
-
         ot_sem = round(min_acum/60 - cfg["horas_sem"], 1)
         horas_sem = round(min_acum/60, 1)
         semanas_result.append({"lunes": dom, "rows": rows, "ot_semana": ot_sem, "horas_semana": horas_sem})
-
-    sub = dict(hed=0.0, hen=0.0, rno=0.0, hefd=0.0, hefn=0.0,
-               rfd=0.0, rfn=0.0, horas_total=0.0, ot_total=0.0)
+    sub = dict(hed=0.0, hen=0.0, rno=0.0, hefd=0.0, hefn=0.0, rfd=0.0, rfn=0.0, horas_total=0.0, ot_total=0.0)
     for sem in semanas_result:
-        sub["ot_total"]    += sem["ot_semana"]
+        sub["ot_total"] += sem["ot_semana"]
         sub["horas_total"] += sem["horas_semana"]
         for row in sem["rows"]:
-            for col in cols_he:
-                sub[col] += row["resultado"][col]
-    for k in sub:
-        sub[k] = round(sub[k], 1)
-
+            for col in cols_he: sub[col] += row["resultado"][col]
+    for k in sub: sub[k] = round(sub[k], 1)
     return {"semanas": semanas_result, "subtotales": sub,
             "dias": [d.isoformat() for d in dias],
             "inicio": inicio.isoformat(), "fin": fin.isoformat()}
@@ -137,4 +115,37 @@ def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db
         vals = calcular_valores(tec.sueldo, cfg["horas_sem"], sub)
         result.append({"id":tec.id,"nombre":tec.nombre,"cedula":tec.cedula,
                        "cargo":tec.cargo,"sueldo":tec.sueldo,**sub,**vals})
+    return result
+
+
+@router.get("/observaciones/{year}/{month}")
+def reporte_observaciones(year: int, month: int, empresa_id: int, db: Session = Depends(get_db)):
+    mes_fin = month+1 if month<12 else 1
+    año_fin = year if month<12 else year+1
+    inicio = date(year, month, 21)
+    fin = date(año_fin, mes_fin, 20)
+    tecs = db.query(Tecnico).filter(
+        Tecnico.empresa_id==empresa_id, Tecnico.activo==True
+    ).order_by(Tecnico.nombre).all()
+    result = []
+    for tec in tecs:
+        rows = db.query(Registro).filter(
+            Registro.tecnico_id==tec.id,
+            Registro.fecha>=inicio,
+            Registro.fecha<=fin,
+            Registro.observacion != None,
+            Registro.observacion != ""
+        ).all()
+        obs_count = {}
+        for r in rows:
+            obs = (r.observacion or "").strip().upper()
+            if obs:
+                obs_count[obs] = obs_count.get(obs, 0) + 1
+        if obs_count:
+            result.append({
+                "id": tec.id,
+                "nombre": tec.nombre,
+                "cargo": tec.cargo,
+                "obs": [{"tipo": k, "dias": v} for k,v in sorted(obs_count.items())]
+            })
     return result
