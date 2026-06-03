@@ -89,6 +89,11 @@ const PLAN = {
     return '<option value=""></option>' + horas.map(h=>`<option value="${h}"${sel===h?' selected':''}>${h}</option>`).join('');
   },
 
+  _clearSelect(sel, fecha, turno, field) {
+    sel.value = '';
+    this.saveField(fecha, turno, field, '');
+  },
+
   render() {
     const body = document.getElementById("plan-body");
     const foot = document.getElementById("plan-foot");
@@ -133,8 +138,12 @@ const PLAN = {
           }
 
           html+=`
-          <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
-          <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)"
+            onkeydown="if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();PLAN._clearSelect(this,'${fecha}',${turno},'entrada')}"
+            style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)"
+            onkeydown="if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();PLAN._clearSelect(this,'${fecha}',${turno},'salida')}"
+            style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
           <td><input type="number" value="${reg.descanso?(reg.descanso/60).toFixed(1):''}" min="0" max="3" step="0.5" placeholder="0"
             onchange="PLAN.saveField('${fecha}',${turno},'descanso',+this.value*60)"></td>
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'observacion',this.value)">${obsOpts
@@ -217,6 +226,7 @@ const PLAN = {
     const tecId=STATE.planTecId; if(!tecId) return;
     try {
       await API.post(`/registros/${tecId}/manual`,{fecha,turno,campo,valor});
+      await this.cargar();
     } catch(e){UI.toast("Error al guardar HE","err");}
   },
 
