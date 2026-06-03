@@ -1,5 +1,7 @@
 const DASH2 = {
   period: null,
+  _data: [],
+  _chart: null,
 
   init() {
     if(!this.period) this.period = {...STATE.planPeriod};
@@ -27,13 +29,12 @@ const DASH2 = {
     const {y,m} = this.period;
     const eid = STATE.empresa.empresa_id;
     try {
-      const data = await API.get(`/calculos/observaciones/${y}/${m}?empresa_id=${eid}`);
-      this.render(data);
+      this._data = await API.get(`/calculos/observaciones/${y}/${m}?empresa_id=${eid}`);
+      this.render(this._data);
     } catch(e) { UI.toast("Error al cargar observaciones","err"); }
   },
 
   render(data) {
-    // Métricas
     const totalDias = data.reduce((s,t)=>s+t.obs.reduce((a,o)=>a+o.dias,0),0);
     const incap = data.reduce((s,t)=>s+t.obs.filter(o=>o.tipo==="INCAPACIDAD").reduce((a,o)=>a+o.dias,0),0);
     const ausencias = data.reduce((s,t)=>s+t.obs.filter(o=>o.tipo==="AUSENCIA INJUSTIFICADA").reduce((a,o)=>a+o.dias,0),0);
@@ -44,7 +45,6 @@ const DASH2 = {
     document.getElementById("dash2-ausencia").textContent = ausencias;
     document.getElementById("dash2-vacas").textContent = vacas;
 
-    // Filtros
     const selTec = document.getElementById("dash2-sel-tec");
     const selObs = document.getElementById("dash2-sel-obs");
     const curTec = selTec.value;
@@ -59,11 +59,87 @@ const DASH2 = {
       [...tiposSet].sort().map(tp=>`<option value="${tp}">${tp}</option>`).join("");
     if(curObs) selObs.value = curObs;
 
+    this._renderChart(data, curTec, curObs);
     this._renderCards(data);
   },
 
   filtrar() {
-    this.cargar();
+    const tecFilter = document.getElementById("dash2-sel-tec").value;
+    const obsFilter = document.getElementById("dash2-sel-obs").value;
+    this._renderChart(this._data, tecFilter, obsFilter);
+    this._renderCards(this._data);
+  },
+
+  _renderChart(data, tecFilter, obsFilter) {
+    // Filtrar datos según selección
+    let filtered = data.filter(t => !tecFilter || t.id==tecFilter);
+
+    // Agrupar por tipo de observación
+    const totales = {};
+    filtered.forEach(t => {
+      t.obs.forEach(o => {
+        if(!obsFilter || o.tipo===obsFilter) {
+          totales[o.tipo] = (totales[o.tipo]||0) + o.dias;
+        }
+      });
+    });
+
+    const labels = Object.keys(totales).sort((a,b)=>totales[b]-totales[a]);
+    const values = labels.map(l=>totales[l]);
+
+    const COLORS = {
+      "INCAPACIDAD":"#E8745A","PERMISO":"#5A9BE8","DESCANSO":"#6BBF4E",
+      "DESCANSO FESTIVO":"#6BBF4E","DESCANSO POR CULTO":"#6BBF4E",
+      "AUSENCIA INJUSTIFICADA":"#E85A5A","VACACIONES":"#8A7FE8",
+      "RENUNCIA":"#E85A5A","LICENCIA POR LUTO":"#5A9BE8",
+      "PERMISO JURADO VOTACION":"#5A9BE8","CITA MEDICA":"#5ABCE8",
+      "DIA DE LA FAMILIA":"#6BBF4E","DIA COMPENSATORIO":"#6BBF4E",
+      "CAPACITACION ALTURAS":"#5A9BE8","DISPONIBILIDAD":"#B0A89A",
+      "VOTACION":"#B0A89A","REUNION":"#B0A89A",
+    };
+    const bgColors = labels.map(l=>COLORS[l]||"#B0A89A");
+
+    // Crear o actualizar canvas
+    let wrap = document.getElementById("dash2-chart-wrap");
+    if(!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "dash2-chart-wrap";
+      wrap.style.cssText = "background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:12px;";
+      wrap.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.06em">Días por tipo de novedad</div><div style="position:relative;height:220px"><canvas id="dash2-chart"></canvas></div>';
+      document.getElementById("dash2-cards").insertAdjacentElement("beforebegin", wrap);
+    }
+
+    const ctx = document.getElementById("dash2-chart");
+    if(!ctx) return;
+
+    if(this._chart) this._chart.destroy();
+
+    if(!labels.length) {
+      wrap.style.display="none"; return;
+    }
+    wrap.style.display="block";
+
+    this._chart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: bgColors,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color:"#888" }, grid: { color:"rgba(0,0,0,0.05)" } },
+          y: { ticks: { color:"#888", font:{ size:10 } }, grid: { display:false } }
+        }
+      }
+    });
   },
 
   _renderCards(data) {
