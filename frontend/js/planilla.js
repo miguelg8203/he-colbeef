@@ -80,21 +80,42 @@ const PLAN = {
     } catch(e) { UI.toast("Error al cargar planilla","err"); }
   },
 
-  _horaOpts(sel) {
+  _horaList() {
     const horas = [];
     for(let h=1;h<=24;h++){
       horas.push(`${String(h).padStart(2,'0')}:00`);
       if(h<24) horas.push(`${String(h).padStart(2,'0')}:30`);
     }
+    return horas;
+  },
+
+  _horaOpts(sel) {
+    const horas = this._horaList();
     return '<option value=""></option>' + horas.map(h=>`<option value="${h}"${sel===h?' selected':''}>${h}</option>`).join('');
   },
 
-  _clearSelect(sel, fecha, turno, field) {
-    sel.value = '';
-    this.saveField(fecha, turno, field, '');
+  _saveHora(fecha, turno, field, value) {
+    // Normalizar formato: 0700 → 07:00
+    let v = value.trim();
+    if(/^\d{4}$/.test(v)) v = v.slice(0,2)+':'+v.slice(2);
+    if(/^\d{1,2}$/.test(v)) v = v.padStart(2,'0')+':00';
+    // Validar HH:MM
+    const m = v.match(/^(\d{2}):(\d{2})$/);
+    if(v && (!m || +m[1]>24 || +m[2]>59)) {
+      UI.toast("Hora inválida. Use formato HH:MM","err"); return;
+    }
+    this.saveField(fecha, turno, field, v);
   },
 
   render() {
+    // Generar datalist de horas una sola vez
+    if(!document.getElementById("hora-list")) {
+      const dl = document.createElement("datalist");
+      dl.id = "hora-list";
+      dl.innerHTML = this._horaList().map(h=>`<option value="${h}">`).join('');
+      document.body.appendChild(dl);
+    }
+
     const body = document.getElementById("plan-body");
     const foot = document.getElementById("plan-foot");
     const obs  = STATE.observaciones;
@@ -138,12 +159,18 @@ const PLAN = {
           }
 
           html+=`
-          <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)"
-            onkeydown="if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();PLAN._clearSelect(this,'${fecha}',${turno},'entrada')}"
-            style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
-          <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)"
-            onkeydown="if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();PLAN._clearSelect(this,'${fecha}',${turno},'salida')}"
-            style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
+          <td><input type="text" value="${reg.entrada||''}" placeholder="HH:MM" maxlength="5"
+            list="hora-list"
+            style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
+            onblur="PLAN._saveHora('${fecha}',${turno},'entrada',this.value)"
+            onkeydown="if(event.key==='Enter'){this.blur()}"
+          ></td>
+          <td><input type="text" value="${reg.salida||''}" placeholder="HH:MM" maxlength="5"
+            list="hora-list"
+            style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
+            onblur="PLAN._saveHora('${fecha}',${turno},'salida',this.value)"
+            onkeydown="if(event.key==='Enter'){this.blur()}"
+          ></td>
           <td><input type="number" value="${reg.descanso?(reg.descanso/60).toFixed(1):''}" min="0" max="3" step="0.5" placeholder="0"
             onchange="PLAN.saveField('${fecha}',${turno},'descanso',+this.value*60)"></td>
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'observacion',this.value)">${obsOpts
