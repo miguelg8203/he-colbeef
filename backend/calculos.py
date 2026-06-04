@@ -48,6 +48,33 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
     if trab_h<=0: return res
     res["horas_trab"]=round(trab_h,2); res["min_dia"]=round(trab_h*60)
 
+    # Caso especial: entrada diurna (antes de 14:00) con salida que cruza noche
+    # Ej: 09:00→07:00 → jornada normal + RNO + HEN + HED al final
+    if not B and F < hn("14:00") and G_adj > hn("22:00") and dw not in [6,7]:
+        # Horas diurnas extras antes de 19:00 (sobre jornada de 8h desde entrada)
+        fin_diurno = hn("19:00")
+        jornada_h = 8.0
+        horas_diurnas = (min(G_adj, fin_diurno) - F) * 24 - des_h
+        hed = max(0, round(horas_diurnas - jornada_h, 1))
+        res["hed"] = hed
+
+        # RNO: 22:00→06:00 (siguiente día)
+        rno_inicio = hn("22:00")
+        rno_fin = hn("06:00") + 1  # 06:00 del día siguiente
+        rno = max(0, (min(G_adj, rno_fin) - rno_inicio) * 24)
+        res["rno"] = round(rno, 1)
+
+        # HEN: 19:00→22:00 (zona nocturna antes de RNO)
+        hen = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
+        res["hen"] = round(hen, 1)
+
+        # HED adicional después de 06:00 (si sale después de 06:00)
+        if G_adj > rno_fin:
+            hed_post = (G_adj - rno_fin) * 24
+            res["hed"] = round(res["hed"] + hed_post, 1)
+
+        return res
+
     # HED
     if not B and entrada_s and salida_s:
         if dw==7: hed=0.0
@@ -88,11 +115,11 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             for k in ["hed","hen","hefd","hefn","rfd","rfn","horas_trab"]: res[k]=round(res[k],1)
             return res
         if dw==5 and F==hn("22:00") and not B:
-            # Solo aplica si NO es festivo
             dom_fecha = fecha - timedelta(days=5)
             reg_dom=(registros_todos or {}).get(dom_fecha,{})
             if not reg_dom and registros_todos:
                 reg_dom=registros_todos.get(dom_fecha.isoformat(),{})
+            if isinstance(reg_dom, list): reg_dom = reg_dom[0] if reg_dom else {}
             dom_entrada=reg_dom.get("entrada","")
             if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
                 rno=4.0
@@ -108,7 +135,18 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         elif B:
             rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24) if F>=hn("22:00") else 0.0
         elif F<hn("14:00"): rno=0.0
-        elif hn("14:00")<=F<hn("22:00"): rno=max(0,(min(G_adj,hn("22:00"))-hn("19:00"))*24)
+        elif hn("14:00")<=F<hn("22:00"):
+            if G_adj > hn("22:00"):
+                # Turno que entra tarde y sale cruzando la noche: RNO = 22:00→06:00
+                rno = max(0, (min(G_adj, hn("06:00")+1) - hn("22:00")) * 24)
+                # HEN = 05:00→06:00 si sale después de 06:00
+                if G_adj > hn("06:00")+1:
+                    res["hen"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
+                # HED = horas diurnas después de 06:00
+                if G_adj > hn("06:00")+1:
+                    res["hed"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
+            else:
+                rno = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
         else: rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
         res["rno"]=round(max(0,rno),1)
 
