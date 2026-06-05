@@ -27,17 +27,25 @@ def guardar(tecnico_id: int, r: RegistroIn, db: Session = Depends(get_db)):
     data = r.model_dump()
     data["tecnico_id"] = tecnico_id
 
-    # Si no hay entrada O no hay salida → limpiar HE
+    # Si no hay entrada O no hay salida → limpiar todo
     if not r.entrada or not r.salida:
         data["hed"]=data["hen"]=data["rno"]=0.0
         data["hefd"]=data["hefn"]=data["rfd"]=data["rfn"]=0.0
         data["horas_trab"]=0.0
-    elif obj and any([obj.hed,obj.hen,obj.rno,obj.hefd,obj.hefn,obj.rfd,obj.rfn]):
-        # Conservar HE manuales si ya existen y hay horario
-        data["hed"]=obj.hed; data["hen"]=obj.hen; data["rno"]=obj.rno
-        data["hefd"]=obj.hefd; data["hefn"]=obj.hefn
-        data["rfd"]=obj.rfd; data["rfn"]=obj.rfn
-        data["horas_trab"]=obj.horas_trab
+    elif obj:
+        # Si cambió entrada o salida → limpiar HE para que recalcule
+        entrada_cambio = (obj.entrada or "") != (r.entrada or "")
+        salida_cambio = (obj.salida or "") != (r.salida or "")
+        if entrada_cambio or salida_cambio:
+            data["hed"]=data["hen"]=data["rno"]=0.0
+            data["hefd"]=data["hefn"]=data["rfd"]=data["rfn"]=0.0
+            data["horas_trab"]=0.0
+        else:
+            # No cambió horario → conservar HE manuales
+            data["hed"]=obj.hed; data["hen"]=obj.hen; data["rno"]=obj.rno
+            data["hefd"]=obj.hefd; data["hefn"]=obj.hefn
+            data["rfd"]=obj.rfd; data["rfn"]=obj.rfn
+            data["horas_trab"]=obj.horas_trab
     else:
         data["hed"]=data["hen"]=data["rno"]=0.0
         data["hefd"]=data["hefn"]=data["rfd"]=data["rfn"]=0.0

@@ -27,7 +27,7 @@ for path in [os.path.join(BASE_DIR,"..","frontend"), os.path.join(BASE_DIR,"fron
             if os.path.exists(d):
                 app.mount(f"/{name}", StaticFiles(directory=d), name=name)
         @app.get("/")
-        def index(): return FileResponse(os.path.join(fp, "index.html"))
+        def index(): return FileResponse(os.path.join(fp, "index.html"), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
         break
 
 if __name__ == "__main__":
