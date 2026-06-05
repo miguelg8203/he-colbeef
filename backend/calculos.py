@@ -75,22 +75,47 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
 
         return res
 
+    # Verificar DESCANSO POR CULTO en el sábado de esta semana
+    _culto = False
+    if registros_todos:
+        dow_actual = fecha.weekday()  # 0=lun..6=dom
+        dias_hasta_sab = 5 - dow_actual if dow_actual <= 5 else -1
+        if dias_hasta_sab >= 0:
+            sab_fecha = fecha + timedelta(days=dias_hasta_sab)
+        else:
+            sab_fecha = fecha - timedelta(days=1)
+        reg_sab = registros_todos.get(sab_fecha, {})
+        if not reg_sab: reg_sab = registros_todos.get(sab_fecha.isoformat(), {})
+        if isinstance(reg_sab, list): reg_sab = reg_sab[0] if reg_sab else {}
+        obs_sab = (reg_sab.get("observacion") or "").strip().upper()
+        if obs_sab == "DESCANSO POR CULTO": _culto = True
+
+    # Jornada diaria según culto: Lun-Jue=9h, Vie=8h; sin culto=8h
+    if _culto and dw <= 4:  # Lun-Jue
+        _jornada = 9.0
+    elif _culto and dw == 5:  # Viernes
+        _jornada = 8.0
+    else:
+        _jornada = 8.0
+
     # HED
     if not B and entrada_s and salida_s:
         if dw==7: hed=0.0
         elif dw==6:
-            if F==hn("06:00"): hed=(min(G_adj,hn("19:00"))-F)*24-4-des_h
+            if _culto:
+                hed=0.0  # Sábado con descanso por culto no genera HED
+            elif F==hn("06:00"): hed=(min(G_adj,hn("19:00"))-F)*24-4-des_h
             elif F==hn("14:00"): hed=1.0
-            elif F==hn("07:00"): hed=max(0,(min(G_adj,hn("19:00"))-F)*24-8-des_h)
+            elif F==hn("07:00"): hed=max(0,(min(G_adj,hn("19:00"))-F)*24-_jornada-des_h)
             else: hed=0.0
         elif F==hn("22:00"): hed=max(0,(G-hn("06:00"))*24-des_h) if G>hn("06:00") else 0.0
         elif F==hn("07:00"):
-            diff=round((min(G_adj,hn("19:00"))-F)*24-8-des_h,4)
+            diff=round((min(G_adj,hn("19:00"))-F)*24-_jornada-des_h,4)
             hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
         elif F<hn("14:00"):
             g_cap=min(G_adj,hn("19:00"))
             if g_cap<=hn("06:00"): g_cap+=1
-            diff=round((g_cap-hn("14:00"))*24-des_h,4)
+            diff=round((g_cap-F)*24-_jornada-des_h,4)
             hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
         else: hed=0.0
         res["hed"]=hed if isinstance(hed,int) else round(hed,1)
