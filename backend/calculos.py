@@ -108,7 +108,18 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             elif F==hn("06:00"): hed=(min(G_adj,hn("19:00"))-F)*24-4-des_h
             elif F==hn("14:00"): hed=1.0
             elif F==hn("07:00"): hed=max(0,(min(G_adj,hn("19:00"))-F)*24-_jornada-des_h)
-            else: hed=0.0
+            else:
+                jornada_sab=4.0
+                g_cap=min(G_adj,hn("19:00"))
+                if g_cap<=hn("06:00"): g_cap+=1
+                diff=round((g_cap-F)*24-jornada_sab-des_h,4)
+                if F<hn("06:00") and diff>0:
+                    pre06=max(0,(hn("06:00")-F))*24
+                    hen_part=min(diff,pre06)
+                    res["hen"]=round(hen_part,1); _hen_set=True
+                    hed=round(diff-hen_part,1)
+                else:
+                    hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
         elif F==hn("22:00"): hed=max(0,(G-hn("06:00"))*24-des_h) if G>hn("06:00") else 0.0
         elif F==hn("07:00"):
             diff=round((min(G_adj,hn("19:00"))-F)*24-_jornada-des_h,4)
