@@ -98,6 +98,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
     else:
         _jornada = 8.0
 
+    _hen_set=False
     # HED
     if not B and entrada_s and salida_s:
         if dw==7: hed=0.0
@@ -116,12 +117,19 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             g_cap=min(G_adj,hn("19:00"))
             if g_cap<=hn("06:00"): g_cap+=1
             diff=round((g_cap-F)*24-_jornada-des_h,4)
-            hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
+            if F<hn("06:00") and diff>0:
+                # Horas extra antes de la jornada que caen antes de 06:00 → HEN
+                pre06=max(0,(hn("06:00")-F))*24
+                hen_part=min(diff,pre06)
+                res["hen"]=round(hen_part,1); _hen_set=True
+                hed=round(diff-hen_part,1)
+            else:
+                hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
         else: hed=0.0
         res["hed"]=hed if isinstance(hed,int) else round(hed,1)
 
     # HEN
-    if not B and entrada_s and salida_s:
+    if not B and entrada_s and salida_s and not _hen_set:
         if F==hn("06:00") and G_adj>hn("19:00"): hen=(G_adj-hn("19:00"))*24
         elif dw==6 and F==hn("22:00") and G==hn("06:00"): hen=0.0
         elif dw==6:
