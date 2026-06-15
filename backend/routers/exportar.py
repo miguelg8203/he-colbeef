@@ -25,6 +25,8 @@ C_FEST   = colors.HexColor("#fde8e8")
 C_GRIS   = colors.HexColor("#f5f5f5")
 C_BLANCO = colors.white
 
+COLS_HE = ["hed","hen","rno","hefd","hefn","rfd","rfn"]
+
 
 def _get_cfg(db):
     c = db.query(Configuracion).first()
@@ -56,12 +58,14 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
         Registro.tecnico_id == tecnico_id,
         Registro.fecha >= inicio, Registro.fecha <= fin,
     ).all()
-    regs = {r.fecha: r for r in regs_db}
 
-    calc = calcular_periodo(year, month, regs_db and
+    # Mapa (fecha, turno) → registro BD para consultar HE manuales
+    regs_manual = {(r.fecha, r.turno or 1): r for r in regs_db}
+
+    calc = calcular_periodo(year, month,
         {r.fecha: {"entrada":r.entrada,"salida":r.salida,"descanso":r.descanso,
                    "es_festivo":r.es_festivo,"observacion":r.observacion}
-         for r in regs_db} or {}, cfg, obs_map)
+         for r in regs_db} if regs_db else {}, cfg, obs_map)
 
     buf = io.BytesIO()
     from reportlab.lib.pagesizes import A3
@@ -80,7 +84,6 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
         Spacer(1, 0.3*cm),
     ]
 
-    # Encabezado tabla
     headers = ["#","Fecha","Entrada","Salida","Desc.","Observación",
                "H.Trab","OT","HED","HEN","RNO","HEFD","HEFN","RFD","RFN"]
     col_w   = [0.5,2.4,1.2,1.2,0.8,3.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
@@ -88,24 +91,27 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
 
     tabla_data = [headers]
     row_styles = []
-    fila = 1  # 0 = header
-
-    sub_acum = {"hed":0,"hen":0,"rno":0,"hefd":0,"hefn":0,"rfd":0,"rfn":0}
-    ot_prev  = None
+    fila = 1
     num = 0
 
     for sem in calc["semanas"]:
-        ot_sem = sem["ot_semana"]
         for item in sem["rows"]:
             f   = item["fecha"]
             r   = item["registro"]
             res = item["resultado"]
             num += 1
+            turno = r.get("turno") or 1
+
+            # Usar HE manuales si existen en BD
+            reg_bd = regs_manual.get((f, turno))
+            if reg_bd and any(getattr(reg_bd, c, 0) for c in COLS_HE):
+                for c in COLS_HE:
+                    res[c] = getattr(reg_bd, c, 0) or 0.0
 
             is_dom  = f.weekday() == 6
             is_fest = r.get("es_festivo", False)
-
             obs_str = r.get("observacion") or ""
+
             row = [
                 str(num),
                 f"{DIAS[f.weekday()]} {f.day} {MESES[f.month][:3]}",
@@ -114,7 +120,7 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
                 fmt(r.get("descanso")),
                 obs_str[:28],
                 fmt(res["horas_trab"]),
-                "",  # OT se llena al final de semana
+                "",
                 fmt(res["hed"]), fmt(res["hen"]), fmt(res["rno"]),
                 fmt(res["hefd"]),fmt(res["hefn"]),fmt(res["rfd"]),fmt(res["rfn"]),
             ]
@@ -129,14 +135,27 @@ def pdf_tecnico(tecnico_id: int, year: int, month: int, db: Session = Depends(ge
 
             fila += 1
 
-        for k in sub_acum: sub_acum[k] += sum(item["resultado"][k] for item in sem["rows"])
-
-    # Fila SUBTOTAL PERIODO
     sub = calc["subtotales"]
+
+    # Recalcular subtotales usando valores manuales si aplica
+    sub_real = {c: 0.0 for c in COLS_HE}
+    for sem in calc["semanas"]:
+        for item in sem["rows"]:
+            f = item["fecha"]
+            r = item["registro"]
+            turno = r.get("turno") or 1
+            reg_bd = regs_manual.get((f, turno))
+            if reg_bd and any(getattr(reg_bd, c, 0) for c in COLS_HE):
+                for c in COLS_HE:
+                    sub_real[c] += getattr(reg_bd, c, 0) or 0.0
+            else:
+                for c in COLS_HE:
+                    sub_real[c] += item["resultado"][c]
+
     tabla_data.append([
         "","","","","","SUBTOTAL PERIODO","","",
-        fmt(sub["hed"]), fmt(sub["hen"]), fmt(sub["rno"]),
-        fmt(sub["hefd"]),fmt(sub["hefn"]),fmt(sub["rfd"]),fmt(sub["rfn"]),
+        fmt(sub_real["hed"]), fmt(sub_real["hen"]), fmt(sub_real["rno"]),
+        fmt(sub_real["hefd"]),fmt(sub_real["hefn"]),fmt(sub_real["rfd"]),fmt(sub_real["rfn"]),
     ])
     row_styles.append(("BACKGROUND", (0,fila),(-1,fila), C_VERDE))
     row_styles.append(("FONTNAME",   (0,fila),(-1,fila), "Helvetica-Bold"))
