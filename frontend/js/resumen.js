@@ -34,8 +34,6 @@ const RES = {
       });
       return `<tr>
         <td class="num">${i+1}</td><td>${t.nombre}</td>
-        <td style="color:var(--text2)">${t.cargo}</td>
-        <td class="num">${fmtCop(t.sueldo)}</td>
         <td class="num">${fmt(t.hed)}</td><td class="num">${fc(t.val_hed)}</td>
         <td class="num">${fmt(t.hen)}</td><td class="num">${fc(t.val_hen)}</td>
         <td class="num">${fmt(t.rno)}</td><td class="num">${fc(t.val_rno)}</td>
@@ -47,7 +45,7 @@ const RES = {
       </tr>`;
     }).join("");
     foot.innerHTML=`<tr>
-      <td colspan="3" style="text-align:right;padding-right:12px">TOTAL</td><td></td>
+      <td colspan="2" style="text-align:right;padding-right:12px">TOTAL</td>
       <td class="num">${fmt(totSub.hed)}</td><td class="num">${fc(totVal.hed)}</td>
       <td class="num">${fmt(totSub.hen)}</td><td class="num">${fc(totVal.hen)}</td>
       <td class="num">${fmt(totSub.rno)}</td><td class="num">${fc(totVal.rno)}</td>
