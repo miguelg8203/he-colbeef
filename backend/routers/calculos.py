@@ -75,8 +75,12 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
                 res = calcular_fila(fecha, reg, obs_map, registros_todos=registros_simple)
                 tiene_manual = any(reg.get(c, 0) for c in cols_he)
                 if tiene_manual:
+                    # Solo reemplazar columnas con valor manual (≠0)
+                    # Las que están en 0 en BD conservan el valor calculado
                     for c in cols_he:
-                        res[c] = reg.get(c, 0) or 0.0
+                        val_bd = reg.get(c, 0) or 0.0
+                        if val_bd != 0:
+                            res[c] = val_bd
                 filas_dia.append({
                     "fecha": fecha.isoformat(),
                     "resultado": res,
