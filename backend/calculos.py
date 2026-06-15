@@ -98,6 +98,21 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
     else:
         _jornada = 8.0
 
+    # Caso especial: día normal 22:00→XX:XX cruzando medianoche hacia día festivo
+    if not B and F >= hn("22:00") and G_adj > 1.0 and dw not in [6, 7]:
+        _sig_fest = False
+        if registros_todos:
+            sig_fecha = fecha + timedelta(days=1)
+            reg_sig = registros_todos.get(sig_fecha, {})
+            if not reg_sig: reg_sig = registros_todos.get(sig_fecha.isoformat(), {})
+            if isinstance(reg_sig, list): reg_sig = reg_sig[0] if reg_sig else {}
+            _sig_fest = bool(reg_sig.get("es_festivo", False))
+        if _sig_fest:
+            res["rno"]  = round((1.0 - F) * 24, 1)                               # 22:00→00:00 normal
+            res["rfn"]  = round(max(0, (min(G_adj, hn("06:00")+1) - 1.0)*24), 1) # 00:00→06:00 festivo
+            res["hefd"] = round(max(0, (G_adj - (hn("06:00")+1)) * 24), 1)       # 06:00→salida festivo
+            return res
+
     _hen_set=False
     # HED
     if not B and entrada_s and salida_s:
