@@ -7,7 +7,6 @@ const TEC = {
     const fuente = this.mostrarInactivos ? STATE.tecnicosInactivos : STATE.tecnicos;
     const list = fuente.filter(t => t.nombre.toLowerCase().includes(q)||t.cargo.toLowerCase().includes(q));
 
-    // Botón toggle
     const btnToggle = document.getElementById("btn-toggle-inactivos");
     if(btnToggle) {
       btnToggle.textContent = this.mostrarInactivos ? "👁 Ver activos" : "👁 Ver ocultados";
@@ -19,7 +18,7 @@ const TEC = {
       : list.map(t=>`
         <div class="tec-card" style="${!t.activo?'opacity:0.6;border:1px dashed var(--border)':''}">
           <div class="tec-card-name">${t.nombre}${!t.activo?' <span style="font-size:10px;color:var(--text3)">(ocultado)</span>':''}</div>
-          <div class="tec-card-info">🪪 ${t.cedula}<br>🔧 ${t.cargo}<br>💰 ${fmtCop(t.sueldo)}</div>
+          <div class="tec-card-info">🪪 ${t.cedula}<br>🔧 ${t.cargo}<br>💰 ${fmtCop(t.sueldo)}${t.fecha_retiro?`<br>📅 Retiro: ${t.fecha_retiro}`:''}</div>
           <div class="tec-card-foot">
             ${t.activo
               ? `<button class="btn" style="font-size:10px" onclick="TEC.verPlanilla(${t.id})">Ver planilla</button>
@@ -90,15 +89,26 @@ const TEC = {
   },
 
   ocultar(id) {
-    const t=STATE.tecnicos.find(x=>x.id===id);
-    UI.confirm(`¿Ocultar a ${t.nombre}?`, async()=>{
+    const t = STATE.tecnicos.find(x=>x.id===id);
+    const hoy = new Date().toISOString().split("T")[0];
+    document.getElementById("confirm-msg").innerHTML = `
+      <p style="margin-bottom:12px;font-size:13px">¿Ocultar a <b>${t.nombre}</b>?</p>
+      <label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Fecha de retiro</label>
+      <input type="date" id="fecha-retiro-input" value="${hoy}"
+        style="width:100%;margin-top:6px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;">
+    `;
+    document.getElementById("confirm-ok").onclick = async () => {
+      const fecha = document.getElementById("fecha-retiro-input").value;
+      if(!fecha){UI.toast("Selecciona una fecha","err");return;}
+      UI.closeModal("modal-confirm");
       try {
-        await API.del(`/tecnicos/${id}`);
-        STATE.tecnicos=STATE.tecnicos.filter(x=>x.id!==id);
-        STATE.tecnicosInactivos = null; // reset cache
+        await API.del(`/tecnicos/${id}?fecha_retiro=${fecha}`);
+        STATE.tecnicos = STATE.tecnicos.filter(x=>x.id!==id);
+        STATE.tecnicosInactivos = null;
         this.render(); PLAN.initSelects(); UI.toast("✅ Técnico ocultado");
       } catch(e){UI.toast("Error","err");}
-    });
+    };
+    UI.openModal("modal-confirm");
   },
 
   async eliminar(id) {
@@ -120,6 +130,7 @@ const TEC = {
       const t = STATE.tecnicosInactivos?.find(x=>x.id===id);
       if(t) {
         t.activo = true;
+        t.fecha_retiro = null;
         STATE.tecnicos.push(t);
         STATE.tecnicosInactivos = STATE.tecnicosInactivos.filter(x=>x.id!==id);
       }

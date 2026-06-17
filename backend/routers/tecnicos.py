@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db, Tecnico
 from schemas import TecnicoIn, TecnicoOut
 from typing import List
+from datetime import date
 
 router = APIRouter(prefix="/tecnicos", tags=["tecnicos"])
 
@@ -34,7 +35,9 @@ def actualizar(id: int, t: TecnicoIn, db: Session = Depends(get_db)):
 def reactivar(id: int, db: Session = Depends(get_db)):
     obj = db.query(Tecnico).filter(Tecnico.id==id).first()
     if not obj: raise HTTPException(404)
-    obj.activo = True; db.commit(); db.refresh(obj); return obj
+    obj.activo = True
+    obj.fecha_retiro = None
+    db.commit(); db.refresh(obj); return obj
 
 @router.delete("/{id}/definitivo")
 def eliminar_definitivo(id: int, db: Session = Depends(get_db)):
@@ -44,9 +47,13 @@ def eliminar_definitivo(id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 @router.delete("/{id}")
-def ocultar(id: int, db: Session = Depends(get_db)):
+def ocultar(id: int, fecha_retiro: str = None, db: Session = Depends(get_db)):
     obj = db.query(Tecnico).filter(Tecnico.id==id).first()
     if not obj: raise HTTPException(404)
     obj.activo = False
+    try:
+        obj.fecha_retiro = date.fromisoformat(fecha_retiro) if fecha_retiro else date.today()
+    except:
+        obj.fecha_retiro = date.today()
     db.commit()
     return {"ok": True}

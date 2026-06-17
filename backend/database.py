@@ -45,15 +45,16 @@ class Observacion(Base):
 
 class Tecnico(Base):
     __tablename__ = "tecnicos"
-    id         = Column(Integer, primary_key=True, autoincrement=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
-    nombre     = Column(String, nullable=False)
-    cedula     = Column(String, nullable=False)
-    cargo      = Column(String, nullable=False)
-    sueldo     = Column(Float, nullable=False)
-    activo     = Column(Boolean, default=True)
-    registros  = relationship("Registro", back_populates="tecnico", cascade="all, delete")
-    empresa    = relationship("Empresa", back_populates="tecnicos")
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    empresa_id    = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    nombre        = Column(String, nullable=False)
+    cedula        = Column(String, nullable=False)
+    cargo         = Column(String, nullable=False)
+    sueldo        = Column(Float, nullable=False)
+    activo        = Column(Boolean, default=True)
+    fecha_retiro  = Column(Date, nullable=True)
+    registros     = relationship("Registro", back_populates="tecnico", cascade="all, delete")
+    empresa       = relationship("Empresa", back_populates="tecnicos")
 
 
 class Registro(Base):
@@ -61,7 +62,7 @@ class Registro(Base):
     id          = Column(Integer, primary_key=True, autoincrement=True)
     tecnico_id  = Column(Integer, ForeignKey("tecnicos.id"), nullable=False)
     fecha       = Column(Date, nullable=False)
-    turno       = Column(Integer, default=1)  # 1=primer turno, 2=segundo turno, etc.
+    turno       = Column(Integer, default=1)
     es_festivo  = Column(Boolean, default=False)
     entrada     = Column(String, nullable=True)
     salida      = Column(String, nullable=True)

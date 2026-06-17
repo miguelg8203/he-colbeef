@@ -75,8 +75,6 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
                 res = calcular_fila(fecha, reg, obs_map, registros_todos=registros_simple)
                 tiene_manual = any(reg.get(c, 0) for c in cols_he)
                 if tiene_manual:
-                    # Solo reemplazar columnas con valor manual (≠0)
-                    # Las que están en 0 en BD conservan el valor calculado
                     for c in cols_he:
                         val_bd = reg.get(c, 0) or 0.0
                         if val_bd != 0:
@@ -111,7 +109,14 @@ def periodo(tecnico_id: int, year: int, month: int, empresa_id: int, db: Session
 @router.get("/resumen/{year}/{month}")
 def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db)):
     cfg = _cfg(empresa_id,db); obs = _obs(empresa_id,db)
-    tecs = db.query(Tecnico).filter(Tecnico.empresa_id==empresa_id, Tecnico.activo==True).all()
+    inicio_periodo = date(year, month, 21)
+    # Mostrar técnico si está activo O si su fecha_retiro es posterior al inicio del periodo
+    tecs = db.query(Tecnico).filter(
+        Tecnico.empresa_id==empresa_id
+    ).filter(
+        (Tecnico.activo==True) |
+        (Tecnico.fecha_retiro >= inicio_periodo)
+    ).order_by(Tecnico.nombre).all()
     result = []
     for tec in tecs:
         calc = calcular_periodo_multi(year, month, _regs(tec.id,year,month,db), cfg, obs)
