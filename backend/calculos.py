@@ -184,12 +184,17 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24) if F>=hn("22:00") else 0.0
         elif F<hn("14:00"): rno=0.0
         elif hn("14:00")<=F<hn("22:00"):
-            if G_adj > hn("22:00"):
+            if G_adj > 1.0:
+                # Cruza medianoche: RNO = 22:00→06:00
                 rno = max(0, (min(G_adj, hn("06:00")+1) - hn("22:00")) * 24)
                 if G_adj > hn("06:00")+1:
                     res["hen"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
                 if G_adj > hn("06:00")+1:
                     res["hed"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
+            elif G_adj > hn("22:00"):
+                # Sale después de 22:00 pero antes de medianoche → RNO + HEN
+                rno = max(0, (hn("22:00") - hn("19:00")) * 24)
+                res["hen"] = round((G_adj - hn("22:00")) * 24, 1)
             else:
                 rno = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
         else: rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
