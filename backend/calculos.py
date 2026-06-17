@@ -222,7 +222,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             hefn=0.0 if F>=hn("22:00") else max(0,(G_adj-hn("19:00"))*24)
         elif B and (G_adj-F)*24>8:
             if F==hn("22:00"): hefn=0.0
-            elif F==hn("14:00"): hefn=max(0,(min(G_adj,1.0)-hn("22:00"))*24)
+            elif F==hn("14:00"): hefn=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
             else: hefn=max(0,(G_adj-hn("19:00"))*24)
         else: hefn=0.0
         res["hefn"]=round(max(0,hefn),1)
