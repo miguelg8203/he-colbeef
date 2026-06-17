@@ -95,11 +95,9 @@ const PLAN = {
   },
 
   _saveHora(fecha, turno, field, value) {
-    // Normalizar formato: 0700 → 07:00
     let v = value.trim();
     if(/^\d{4}$/.test(v)) v = v.slice(0,2)+':'+v.slice(2);
     if(/^\d{1,2}$/.test(v)) v = v.padStart(2,'0')+':00';
-    // Validar HH:MM
     const m = v.match(/^(\d{2}):(\d{2})$/);
     if(v && (!m || +m[1]>24 || +m[2]>59)) {
       UI.toast("Hora inválida. Use formato HH:MM","err"); return;
@@ -108,7 +106,6 @@ const PLAN = {
   },
 
   render() {
-    // Generar datalist de horas una sola vez
     if(!document.getElementById("hora-list")) {
       const dl = document.createElement("datalist");
       dl.id = "hora-list";
@@ -162,12 +159,14 @@ const PLAN = {
           <td><input type="text" value="${reg.entrada||''}" placeholder="HH:MM" maxlength="5"
             list="hora-list"
             style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
+            onfocus="this.select()"
             onblur="PLAN._saveHora('${fecha}',${turno},'entrada',this.value)"
             onkeydown="if(event.key==='Enter'){this.blur()}"
           ></td>
           <td><input type="text" value="${reg.salida||''}" placeholder="HH:MM" maxlength="5"
             list="hora-list"
             style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
+            onfocus="this.select()"
             onblur="PLAN._saveHora('${fecha}',${turno},'salida',this.value)"
             onkeydown="if(event.key==='Enter'){this.blur()}"
           ></td>
