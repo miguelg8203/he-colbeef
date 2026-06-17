@@ -30,6 +30,13 @@ class Configuracion(Base):
     horas_sem     = Column(Float, default=44.0)
     inicio_diurno = Column(String, default="06:00")
     fin_diurno    = Column(String, default="19:00")
+    factor_hed    = Column(Float, default=1.25)
+    factor_hen    = Column(Float, default=1.75)
+    factor_rno    = Column(Float, default=0.35)
+    factor_hefd   = Column(Float, default=2.05)
+    factor_hefn   = Column(Float, default=2.55)
+    factor_rfd    = Column(Float, default=0.80)
+    factor_rfn    = Column(Float, default=1.15)
     empresa       = relationship("Empresa", back_populates="config")
 
 

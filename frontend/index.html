@@ -36,6 +36,10 @@
 .dash-tabla th{text-align:left;padding:6px 8px;font-weight:600;color:var(--text3);border-bottom:0.5px solid var(--border)}
 .dash-tabla td{padding:6px 8px;border-bottom:0.5px solid var(--border);color:var(--text)}
 .dash-tabla tr:last-child td{border-bottom:none}
+.factores-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.factor-item{display:flex;flex-direction:column;gap:4px}
+.factor-item label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.factor-item input{width:100%;padding:6px 8px;font-size:12px;font-family:'DM Mono',monospace;text-align:center}
 </style>
 </head>
 <body>
@@ -250,31 +254,48 @@
 
   <!-- CONFIG -->
   <section id="view-config" class="view">
-    <div class="view-header"><h2>Configuración</h2></div>
-    <div class="config-grid">
-      <div class="card">
-        <div class="card-title">⚙️ Configuración general</div>
-        <div class="form-row">
-          <div class="form-group"><label>Horas semanales</label><input type="number" id="cfg-horas" min="36" max="48" step="1"></div>
-          <div class="form-group"><label>Inicio diurno</label><input type="time" id="cfg-inicio"></div>
-          <div class="form-group"><label>Fin diurno</label><input type="time" id="cfg-fin"></div>
-        </div>
-        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;margin-top:-6px;">
-          <div style="font-size:11px;color:var(--text3);">Jornada diaria (÷6): <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h</div>
-          <div style="font-size:11px;color:var(--text3);">Jornada mensual (×30): <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h</div>
-        </div>
-        <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
+    <div class="view-header">
+      <div><h2>Configuración</h2></div>
+      <div class="header-actions">
+        <button class="btn-outline" id="cfg-lock-btn" onclick="CFG.toggleLock()" style="font-size:11px;">🔓 Desbloquear Config</button>
       </div>
-      <div class="card">
-        <div class="card-title">📋 Observaciones</div>
-        <div class="obs-add-row">
-          <input type="text" id="obs-nombre" placeholder="Nueva observación...">
-          <input type="number" id="obs-horas" placeholder="H.fijas" min="0" max="24" step="0.5" style="width:90px">
-          <label class="check-label"><input type="checkbox" id="obs-ot"> Cuenta OT</label>
-          <button class="btn" onclick="CFG.addObs()">+ Agregar</button>
+    </div>
+    <div id="cfg-content" style="display:none;">
+      <div class="config-grid">
+        <div class="card">
+          <div class="card-title">⚙️ Configuración general</div>
+          <div class="form-row">
+            <div class="form-group"><label>Horas semanales</label><input type="number" id="cfg-horas" min="36" max="48" step="1"></div>
+            <div class="form-group"><label>Inicio diurno</label><input type="time" id="cfg-inicio"></div>
+            <div class="form-group"><label>Fin diurno</label><input type="time" id="cfg-fin"></div>
+          </div>
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;margin-top:-6px;">
+            <div style="font-size:11px;color:var(--text3);">Jornada diaria (÷6): <span id="cfg-jornada-dia" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">7.33</span> h</div>
+            <div style="font-size:11px;color:var(--text3);">Jornada mensual (×30): <span id="cfg-jornada-mes" style="color:var(--text);font-family:'DM Mono',monospace;font-weight:600;margin-left:6px;background:var(--bg3);padding:3px 10px;border-radius:3px;border:1px solid var(--border)">220</span> h</div>
+          </div>
+          <div class="card-title" style="margin-top:8px;">📊 Factores de liquidación</div>
+          <div class="factores-grid">
+            <div class="factor-item"><label>HED ×</label><input type="number" id="cfg-f-hed" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>HEN ×</label><input type="number" id="cfg-f-hen" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>RNO ×</label><input type="number" id="cfg-f-rno" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>HEFD ×</label><input type="number" id="cfg-f-hefd" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>HEFN ×</label><input type="number" id="cfg-f-hefn" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>RFD ×</label><input type="number" id="cfg-f-rfd" min="0" max="5" step="0.01"></div>
+            <div class="factor-item"><label>RFN ×</label><input type="number" id="cfg-f-rfn" min="0" max="5" step="0.01"></div>
+          </div>
+          <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
         </div>
-        <div class="obs-header"><span>Nombre</span><span>H.Fijas</span><span>OT</span><span></span></div>
-        <div id="obs-list"></div>
+        <div class="card">
+          <div class="card-title">📋 Observaciones</div>
+          <div class="obs-add-row">
+            <input type="text" id="obs-nombre" placeholder="Nueva observación...">
+            <input type="number" id="obs-horas" placeholder="H.fijas" min="0" max="24" step="0.5" style="width:90px">
+            <label class="check-label"><input type="checkbox" id="obs-ot"> Cuenta OT</label>
+            <button class="btn" onclick="CFG.addObs()">+ Agregar</button>
+          </div>
+          <div class="obs-header"><span>Nombre</span><span>H.Fijas</span><span>OT</span><span></span></div>
+          <div id="obs-list"></div>
+        </div>
       </div>
     </div>
   </section>

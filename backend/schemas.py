@@ -7,6 +7,13 @@ class ConfigIn(BaseModel):
     horas_sem:     float = 44.0
     inicio_diurno: str   = "06:00"
     fin_diurno:    str   = "19:00"
+    factor_hed:    float = 1.25
+    factor_hen:    float = 1.75
+    factor_rno:    float = 0.35
+    factor_hefd:   float = 2.05
+    factor_hefn:   float = 2.55
+    factor_rfd:    float = 0.80
+    factor_rfn:    float = 1.15
 
 class ConfigOut(ConfigIn):
     id: int
@@ -30,8 +37,9 @@ class TecnicoIn(BaseModel):
     sueldo: float
 
 class TecnicoOut(TecnicoIn):
-    id:     int
-    activo: bool
+    id:           int
+    activo:       bool
+    fecha_retiro: Optional[date] = None
     model_config = {"from_attributes": True}
 
 

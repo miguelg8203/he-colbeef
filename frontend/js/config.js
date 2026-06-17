@@ -1,11 +1,41 @@
 const CFG = {
+  desbloqueado: false,
+
   init() {
+    this.desbloqueado = false;
+    this._renderLock();
     const c=STATE.config;
     document.getElementById("cfg-horas").value  = c.horas_sem||44;
     document.getElementById("cfg-inicio").value = c.inicio_diurno||"06:00";
     document.getElementById("cfg-fin").value    = c.fin_diurno||"19:00";
+    // Factores
+    document.getElementById("cfg-f-hed").value  = c.factor_hed||1.25;
+    document.getElementById("cfg-f-hen").value  = c.factor_hen||1.75;
+    document.getElementById("cfg-f-rno").value  = c.factor_rno||0.35;
+    document.getElementById("cfg-f-hefd").value = c.factor_hefd||2.05;
+    document.getElementById("cfg-f-hefn").value = c.factor_hefn||2.55;
+    document.getElementById("cfg-f-rfd").value  = c.factor_rfd||0.80;
+    document.getElementById("cfg-f-rfn").value  = c.factor_rfn||1.15;
     this._updateHint();
     this.renderObs();
+  },
+
+  _renderLock() {
+    const btn = document.getElementById("cfg-lock-btn");
+    const content = document.getElementById("cfg-content");
+    if(btn) btn.textContent = this.desbloqueado ? "🔒 Bloquear Config" : "🔓 Desbloquear Config";
+    if(content) content.style.display = this.desbloqueado ? "block" : "none";
+  },
+
+  toggleLock() {
+    if(!this.desbloqueado) {
+      const clave = prompt("Clave para acceder a configuración:");
+      if(clave !== "1234") { UI.toast("Clave incorrecta","err"); return; }
+      this.desbloqueado = true;
+    } else {
+      this.desbloqueado = false;
+    }
+    this._renderLock();
   },
 
   _updateHint() {
@@ -23,6 +53,13 @@ const CFG = {
       horas_sem:     +document.getElementById("cfg-horas").value,
       inicio_diurno:  document.getElementById("cfg-inicio").value,
       fin_diurno:     document.getElementById("cfg-fin").value,
+      factor_hed:    +document.getElementById("cfg-f-hed").value,
+      factor_hen:    +document.getElementById("cfg-f-hen").value,
+      factor_rno:    +document.getElementById("cfg-f-rno").value,
+      factor_hefd:   +document.getElementById("cfg-f-hefd").value,
+      factor_hefn:   +document.getElementById("cfg-f-hefn").value,
+      factor_rfd:    +document.getElementById("cfg-f-rfd").value,
+      factor_rfn:    +document.getElementById("cfg-f-rfn").value,
     };
     this._updateHint();
     try {

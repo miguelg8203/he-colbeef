@@ -49,36 +49,27 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
     res["horas_trab"]=round(trab_h,2); res["min_dia"]=round(trab_h*60)
 
     # Caso especial: entrada diurna (antes de 14:00) con salida que cruza noche
-    # Ej: 09:00→07:00 → jornada normal + RNO + HEN + HED al final
     if not B and F < hn("14:00") and G_adj > hn("22:00") and dw not in [6,7]:
-        # Horas diurnas extras antes de 19:00 (sobre jornada de 8h desde entrada)
         fin_diurno = hn("19:00")
         jornada_h = 8.0
         horas_diurnas = (min(G_adj, fin_diurno) - F) * 24 - des_h
         hed = max(0, round(horas_diurnas - jornada_h, 1))
         res["hed"] = hed
-
-        # RNO: 22:00→06:00 (siguiente día)
         rno_inicio = hn("22:00")
-        rno_fin = hn("06:00") + 1  # 06:00 del día siguiente
+        rno_fin = hn("06:00") + 1
         rno = max(0, (min(G_adj, rno_fin) - rno_inicio) * 24)
         res["rno"] = round(rno, 1)
-
-        # HEN: 19:00→22:00 (zona nocturna antes de RNO)
         hen = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
         res["hen"] = round(hen, 1)
-
-        # HED adicional después de 06:00 (si sale después de 06:00)
         if G_adj > rno_fin:
             hed_post = (G_adj - rno_fin) * 24
             res["hed"] = round(res["hed"] + hed_post, 1)
-
         return res
 
     # Verificar DESCANSO POR CULTO en el sábado de esta semana
     _culto = False
     if registros_todos:
-        dow_actual = fecha.weekday()  # 0=lun..6=dom
+        dow_actual = fecha.weekday()
         dias_hasta_sab = 5 - dow_actual if dow_actual <= 5 else -1
         if dias_hasta_sab >= 0:
             sab_fecha = fecha + timedelta(days=dias_hasta_sab)
@@ -90,10 +81,9 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         obs_sab = (reg_sab.get("observacion") or "").strip().upper()
         if obs_sab == "DESCANSO POR CULTO": _culto = True
 
-    # Jornada diaria según culto: Lun-Jue=9h, Vie=8h; sin culto=8h
-    if _culto and dw <= 4:  # Lun-Jue
+    if _culto and dw <= 4:
         _jornada = 9.0
-    elif _culto and dw == 5:  # Viernes
+    elif _culto and dw == 5:
         _jornada = 8.0
     else:
         _jornada = 8.0
@@ -108,9 +98,9 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             if isinstance(reg_sig, list): reg_sig = reg_sig[0] if reg_sig else {}
             _sig_fest = bool(reg_sig.get("es_festivo", False))
         if _sig_fest:
-            res["rno"]  = round((1.0 - F) * 24, 1)                               # 22:00→00:00 normal
-            res["rfn"]  = round(max(0, (min(G_adj, hn("06:00")+1) - 1.0)*24), 1) # 00:00→06:00 festivo
-            res["hefd"] = round(max(0, (G_adj - (hn("06:00")+1)) * 24), 1)       # 06:00→salida festivo
+            res["rno"]  = round((1.0 - F) * 24, 1)
+            res["rfn"]  = round(max(0, (min(G_adj, hn("06:00")+1) - 1.0)*24), 1)
+            res["hefd"] = round(max(0, (G_adj - (hn("06:00")+1)) * 24), 1)
             return res
 
     _hen_set=False
@@ -119,7 +109,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         if dw==7: hed=0.0
         elif dw==6:
             if _culto:
-                hed=0.0  # Sábado con descanso por culto no genera HED
+                hed=0.0
             elif F==hn("06:00"): hed=(min(G_adj,hn("19:00"))-F)*24-4-des_h
             elif F==hn("14:00"): hed=1.0
             elif F==hn("07:00"): hed=max(0,(min(G_adj,hn("19:00"))-F)*24-_jornada-des_h)
@@ -145,7 +135,6 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             if g_cap<=hn("06:00"): g_cap+=1
             diff=round((g_cap-F)*24-_jornada-des_h,4)
             if F<hn("06:00") and diff>0:
-                # Horas extra antes de la jornada que caen antes de 06:00 → HEN
                 pre06=max(0,(hn("06:00")-F))*24
                 hen_part=min(diff,pre06)
                 res["hen"]=round(hen_part,1); _hen_set=True
@@ -182,8 +171,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             if isinstance(reg_dom, list): reg_dom = reg_dom[0] if reg_dom else {}
             dom_entrada=reg_dom.get("entrada","")
             if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
-                rno=4.0
-                res["hen"]=4.0
+                rno=4.0; res["hen"]=4.0
             else:
                 rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
         elif dw==5 and F==hn("22:00") and B:
@@ -197,12 +185,9 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         elif F<hn("14:00"): rno=0.0
         elif hn("14:00")<=F<hn("22:00"):
             if G_adj > hn("22:00"):
-                # Turno que entra tarde y sale cruzando la noche: RNO = 22:00→06:00
                 rno = max(0, (min(G_adj, hn("06:00")+1) - hn("22:00")) * 24)
-                # HEN = 05:00→06:00 si sale después de 06:00
                 if G_adj > hn("06:00")+1:
                     res["hen"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
-                # HED = horas diurnas después de 06:00
                 if G_adj > hn("06:00")+1:
                     res["hed"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
             else:
@@ -293,10 +278,12 @@ def calcular_periodo(year,month,registros,cfg,obs_map):
 
 FACTORES={"hed":1.25,"hen":1.75,"rno":0.35,"hefd":2.05,"hefn":2.55,"rfd":0.80,"rfn":1.15}
 
-def calcular_valores(sueldo,horas_sem,subtotales):
+def calcular_valores(sueldo, horas_sem, subtotales, factores=None):
     jornada_mensual=round((horas_sem/6)*30)
     vh=sueldo/jornada_mensual; res={}; neto=0.0
-    for col,f in FACTORES.items():
-        v=round(subtotales.get(col,0.0)*vh*f,2); res[f"val_{col}"]=v; neto+=v
+    f_map = factores if factores else FACTORES
+    for col, f in FACTORES.items():
+        factor = f_map.get(col, f)
+        v=round(subtotales.get(col,0.0)*vh*factor,2); res[f"val_{col}"]=v; neto+=v
     res["neto"]=round(neto,2); res["valor_hora"]=round(vh,2)
     return res

@@ -8,8 +8,18 @@ router = APIRouter(prefix="/calculos", tags=["calculos"])
 
 def _cfg(empresa_id, db):
     c = db.query(Configuracion).filter(Configuracion.empresa_id==empresa_id).first()
-    if not c: return {"horas_sem":44.0,"inicio_diurno":"06:00","fin_diurno":"19:00"}
-    return {"horas_sem":c.horas_sem,"inicio_diurno":c.inicio_diurno,"fin_diurno":c.fin_diurno}
+    if not c: return {
+        "horas_sem":44.0,"inicio_diurno":"06:00","fin_diurno":"19:00",
+        "factor_hed":1.25,"factor_hen":1.75,"factor_rno":0.35,
+        "factor_hefd":2.05,"factor_hefn":2.55,"factor_rfd":0.80,"factor_rfn":1.15
+    }
+    return {
+        "horas_sem":c.horas_sem,"inicio_diurno":c.inicio_diurno,"fin_diurno":c.fin_diurno,
+        "factor_hed":c.factor_hed or 1.25,"factor_hen":c.factor_hen or 1.75,
+        "factor_rno":c.factor_rno or 0.35,"factor_hefd":c.factor_hefd or 2.05,
+        "factor_hefn":c.factor_hefn or 2.55,"factor_rfd":c.factor_rfd or 0.80,
+        "factor_rfn":c.factor_rfn or 1.15,
+    }
 
 def _obs(empresa_id, db):
     obs = db.query(Observacion).filter(Observacion.empresa_id==empresa_id).all()
@@ -109,8 +119,13 @@ def periodo(tecnico_id: int, year: int, month: int, empresa_id: int, db: Session
 @router.get("/resumen/{year}/{month}")
 def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db)):
     cfg = _cfg(empresa_id,db); obs = _obs(empresa_id,db)
+    # Factores desde BD
+    factores = {
+        "hed": cfg["factor_hed"], "hen": cfg["factor_hen"], "rno": cfg["factor_rno"],
+        "hefd": cfg["factor_hefd"], "hefn": cfg["factor_hefn"],
+        "rfd": cfg["factor_rfd"], "rfn": cfg["factor_rfn"],
+    }
     inicio_periodo = date(year, month, 21)
-    # Mostrar técnico si está activo O si su fecha_retiro es posterior al inicio del periodo
     tecs = db.query(Tecnico).filter(
         Tecnico.empresa_id==empresa_id
     ).filter(
@@ -121,7 +136,7 @@ def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db
     for tec in tecs:
         calc = calcular_periodo_multi(year, month, _regs(tec.id,year,month,db), cfg, obs)
         sub  = calc["subtotales"]
-        vals = calcular_valores(tec.sueldo, cfg["horas_sem"], sub)
+        vals = calcular_valores(tec.sueldo, cfg["horas_sem"], sub, factores)
         result.append({"id":tec.id,"nombre":tec.nombre,"cedula":tec.cedula,
                        "cargo":tec.cargo,"sueldo":tec.sueldo,**sub,**vals})
     return result
