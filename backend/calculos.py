@@ -125,6 +125,12 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
                     hed=round(diff-hen_part,1)
                 else:
                     hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
+            elif F<hn("14:00"):
+                # Entrada genérica entre 06:00 y 14:00 en sábado
+                jornada_sab=4.0
+                g_cap=min(G_adj,hn("19:00"))
+                diff=round((g_cap-F)*24-jornada_sab-des_h,4)
+                hed=max(0,diff)
             else: hed=0.0
         elif F==hn("22:00"): hed=max(0,(G-hn("06:00"))*24-des_h) if G>hn("06:00") else 0.0
         elif F==hn("07:00"):
