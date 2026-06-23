@@ -104,6 +104,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             return res
 
     _hen_set=False
+    _rfn_set=False
     # HED
     if not B and entrada_s and salida_s:
         if dw==7: hed=0.0
@@ -184,7 +185,21 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24)
         elif dw==6 and F==hn("22:00"): rno=max(0,(min(G_adj,1.0)-hn("22:00"))*24)
         elif dw==6: rno=0.0
-        elif dw==7 and F==hn("22:00"): rno=max(0,(G_adj-1.0)*24)
+        elif dw==7 and F==hn("22:00"):
+            # Verificar si el lunes siguiente es festivo
+            _lun_fest = False
+            if registros_todos:
+                sig_fecha = fecha + timedelta(days=1)
+                reg_sig = registros_todos.get(sig_fecha, {})
+                if not reg_sig: reg_sig = registros_todos.get(sig_fecha.isoformat(), {})
+                if isinstance(reg_sig, list): reg_sig = reg_sig[0] if reg_sig else {}
+                _lun_fest = bool(reg_sig.get("es_festivo", False))
+            if _lun_fest:
+                rno = 0.0
+                res["rfn"] = round((1.0 - F) * 24 + max(0, (G_adj - 1.0) * 24), 1)
+                _rfn_set = True
+            else:
+                rno=max(0,(G_adj-1.0)*24)
         elif dw==7: rno=0.0
         elif B:
             rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24) if F>=hn("22:00") else 0.0
@@ -235,7 +250,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         res["rfd"]=round(max(0,rfd),1)
 
     # RFN
-    if entrada_s and salida_s:
+    if entrada_s and salida_s and not _rfn_set:
         if dw==6 and F==hn("22:00"): rfn=max(0,(min(G_adj,hn("02:00")+1)-1)*24)
         elif dw==7 and F>=hn("22:00"): rfn=(1.0-F)*24
         elif B:
