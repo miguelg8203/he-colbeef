@@ -59,9 +59,18 @@
         <label>Contraseña</label>
         <input type="password" id="login-pwd" placeholder="••••••••" style="margin-top:6px;">
       </div>
-      <button class="btn-login" onclick="doLogin()">Ingresar →</button>
-      <div id="login-error">Empresa o contraseña incorrecta</div>
+      <div id="login-renovar" style="display:none;margin-bottom:14px;padding:12px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:8px;">
+        <div style="font-size:11px;color:#ff6b6b;margin-bottom:10px;text-align:center;">⛔ Licencia vencida — Ingrese clave para renovar</div>
+        <label style="color:rgba(255,255,255,0.6);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Clave de renovación</label>
+        <input type="password" id="renovar-clave" placeholder="••••••••" style="margin-top:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:10px 12px;width:100%;font-size:14px;">
+        <label style="color:rgba(255,255,255,0.6);font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-top:10px;">Nueva fecha de vencimiento</label>
+        <input type="date" id="renovar-fecha" style="margin-top:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:10px 12px;width:100%;font-size:14px;">
+        <button onclick="renovarLicencia()" style="width:100%;padding:10px;background:linear-gradient(135deg,#ff4444,#cc0000);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;">Renovar licencia</button>
+      </div>
+      <button class="btn-login" id="btn-login-main" onclick="doLogin()">Ingresar →</button>
+      <div id="login-error" style="display:none;color:#ff6b6b;font-size:12px;text-align:center;margin-top:10px;">Empresa o contraseña incorrecta</div>
     </div>
+    <div id="dias-uso-msg" style="display:none;text-align:center;margin-top:12px;font-size:12px;font-weight:500;letter-spacing:.04em;"></div>
     <div class="login-footer">Time Xtra · Miguel Gutierrez</div>
   </div>
 </div>
@@ -284,6 +293,17 @@
             <div class="factor-item"><label>RFN ×</label><input type="number" id="cfg-f-rfn" min="0" max="5" step="0.01"></div>
           </div>
           <button class="btn" onclick="CFG.guardar()">Guardar configuración</button>
+          <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border);">
+            <div class="card-title" style="margin-bottom:10px;">⏳ Caducidad de licencia</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+              <div class="form-group" style="margin:0;flex:1;">
+                <label>Fecha de vencimiento</label>
+                <input type="date" id="cfg-caducidad-fecha" style="margin-top:6px;">
+              </div>
+              <button class="btn" onclick="CFG.guardarCaducidad()">Guardar fecha</button>
+            </div>
+            <div id="cfg-caducidad-info" style="font-size:12px;color:var(--text3);">Sin fecha configurada</div>
+          </div>
         </div>
         <div class="card">
           <div class="card-title">📋 Observaciones</div>

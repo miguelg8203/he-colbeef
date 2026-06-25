@@ -8,7 +8,6 @@ const CFG = {
     document.getElementById("cfg-horas").value  = c.horas_sem||44;
     document.getElementById("cfg-inicio").value = c.inicio_diurno||"06:00";
     document.getElementById("cfg-fin").value    = c.fin_diurno||"19:00";
-    // Factores
     document.getElementById("cfg-f-hed").value  = c.factor_hed||1.25;
     document.getElementById("cfg-f-hen").value  = c.factor_hen||1.75;
     document.getElementById("cfg-f-rno").value  = c.factor_rno||0.35;
@@ -18,6 +17,7 @@ const CFG = {
     document.getElementById("cfg-f-rfn").value  = c.factor_rfn||1.15;
     this._updateHint();
     this.renderObs();
+    this._cargarCaducidad();
   },
 
   _renderLock() {
@@ -66,6 +66,33 @@ const CFG = {
       STATE.config=await API.put(`/config?empresa_id=${eid}`,cfg);
       UI.toast("✅ Configuración guardada");
     } catch(e){UI.toast("Error al guardar config","err");}
+  },
+
+  async _cargarCaducidad() {
+    try {
+      const r = await API.get("/auth/caducidad");
+      const el = document.getElementById("cfg-caducidad-fecha");
+      if(el && r.fecha) el.value = r.fecha;
+      const info = document.getElementById("cfg-caducidad-info");
+      if(info) {
+        if(r.dias === null) { info.textContent = "Sin fecha configurada"; info.style.color="var(--text3)"; }
+        else if(r.dias < 0) { info.textContent = "⛔ Licencia vencida"; info.style.color="#ff4444"; }
+        else if(r.dias <= 5) { info.textContent = `⚠️ Vence en ${r.dias} día${r.dias!==1?'s':''}`;info.style.color="#ffaa00"; }
+        else { info.textContent = `✅ ${r.dias} días restantes`; info.style.color="#00c885"; }
+      }
+    } catch(e){}
+  },
+
+  async guardarCaducidad() {
+    const clave = prompt("Clave de administrador:");
+    if(!clave) return;
+    const fecha = document.getElementById("cfg-caducidad-fecha").value;
+    if(!fecha) { UI.toast("Selecciona una fecha","err"); return; }
+    try {
+      await API.post("/auth/caducidad", {clave, fecha});
+      UI.toast("✅ Fecha de caducidad guardada");
+      this._cargarCaducidad();
+    } catch(e) { UI.toast("Clave incorrecta","err"); }
   },
 
   renderObs() {

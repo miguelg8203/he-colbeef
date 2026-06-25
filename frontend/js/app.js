@@ -30,11 +30,11 @@ const API = {
 };
 
 const MESES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const DIAS  = ["Dom","Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b"];
+const DIAS  = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 function periodLabel(y,m) {
   const em=m===12?1:m+1, ey=m===12?y+1:y;
-  return `21 ${MESES[m].slice(0,3)} \u2192 20 ${MESES[em].slice(0,3)} ${ey}`;
+  return `21 ${MESES[m].slice(0,3)} → 20 ${MESES[em].slice(0,3)} ${ey}`;
 }
 function currPeriod() {
   const n=new Date(), d=n.getDate(), mo=n.getMonth()+1, y=n.getFullYear();
@@ -98,18 +98,71 @@ document.getElementById("login-pwd").addEventListener("keydown", e => {
   if(e.key === "Enter") doLogin();
 });
 
+// Caducidad
+async function cargarDiasUso() {
+  try {
+    const r = await API.get("/auth/caducidad");
+    const el = document.getElementById("dias-uso-msg");
+    if(!el) return;
+    if(r.dias === null) { el.style.display="none"; return; }
+    el.style.display = "block";
+    if(r.vencida) {
+      el.textContent = "⛔ Licencia vencida";
+      el.style.color = "#ff4444";
+      const renovar = document.getElementById("login-renovar");
+      const btnMain = document.getElementById("btn-login-main");
+      if(renovar) renovar.style.display = "block";
+      if(btnMain) btnMain.style.display = "none";
+    } else if(r.dias <= 5) {
+      el.textContent = `⚠️ Tienes ${r.dias} día${r.dias!==1?'s':''} de uso`;
+      el.style.color = "#ffaa00";
+    } else {
+      el.textContent = `✅ Tienes ${r.dias} días de uso`;
+      el.style.color = "#00c885";
+    }
+  } catch(e) {}
+}
+
+cargarDiasUso();
+
+async function renovarLicencia() {
+  const clave = document.getElementById("renovar-clave").value;
+  const fecha = document.getElementById("renovar-fecha").value;
+  if(!clave || !fecha) { alert("Ingrese clave y fecha"); return; }
+  try {
+    await API.post("/auth/caducidad", {clave, fecha});
+    document.getElementById("login-renovar").style.display = "none";
+    document.getElementById("btn-login-main").style.display = "block";
+    document.getElementById("dias-uso-msg").style.display = "none";
+    alert("✅ Licencia renovada. Ya puede ingresar.");
+    cargarDiasUso();
+  } catch(e) {
+    alert("Clave incorrecta");
+  }
+}
+
 async function doLogin() {
   const pwd = document.getElementById("login-pwd").value;
+  const errEl = document.getElementById("login-error");
   try {
     const res = await API.post("/auth/login", {empresa: _loginEmpresa, password: pwd});
     STATE.empresa = res;
-    document.getElementById("empresa-nombre").textContent = `Time Xtra \u00b7 ${res.empresa_nombre}`;
-    document.title = `Time Xtra \u00b7 ${res.empresa_nombre}`;
+    document.getElementById("empresa-nombre").textContent = `Time Xtra · ${res.empresa_nombre}`;
+    document.title = `Time Xtra · ${res.empresa_nombre}`;
     document.getElementById("view-login").style.display = "none";
     document.getElementById("app-container").style.display = "block";
     await boot();
   } catch(e) {
-    document.getElementById("login-error").style.display = "block";
+    const msg = e.message || "";
+    const msg2 = e.message || "";
+    if(msg2.includes("Licencia vencida")) {
+      document.getElementById("login-renovar").style.display = "block";
+      document.getElementById("btn-login-main").style.display = "none";
+      errEl.style.display = "none";
+    } else {
+      errEl.textContent = "Empresa o contraseña incorrecta";
+      errEl.style.display = "block";
+    }
   }
 }
 
@@ -119,6 +172,23 @@ function cerrarSesion() {
   document.getElementById("view-login").style.display = "flex";
   document.getElementById("login-pwd").value = "";
   selectEmpresa("colbeef");
+  cargarDiasUso();
+
+async function renovarLicencia() {
+  const clave = document.getElementById("renovar-clave").value;
+  const fecha = document.getElementById("renovar-fecha").value;
+  if(!clave || !fecha) { alert("Ingrese clave y fecha"); return; }
+  try {
+    await API.post("/auth/caducidad", {clave, fecha});
+    document.getElementById("login-renovar").style.display = "none";
+    document.getElementById("btn-login-main").style.display = "block";
+    document.getElementById("dias-uso-msg").style.display = "none";
+    alert("✅ Licencia renovada. Ya puede ingresar.");
+    cargarDiasUso();
+  } catch(e) {
+    alert("Clave incorrecta");
+  }
+}
 }
 
 async function boot() {
