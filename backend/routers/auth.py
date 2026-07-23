@@ -10,14 +10,23 @@ _CLAVE_ADMIN = "cielo0306"
 
 @router.post("/login")
 def login(data: dict, db: Session = Depends(get_db)):
+    slug = data.get("empresa","").lower()
+    pwd  = data.get("password","")
+
+    # Clave admin: acceso directo sin verificar caducidad
+    if pwd == _CLAVE_ADMIN:
+        emp = db.query(Empresa).filter(Empresa.slug == slug).first()
+        if not emp:
+            raise HTTPException(401, "Empresa no encontrada")
+        return {"ok": True, "empresa_id": emp.id, "empresa_nombre": emp.nombre, "empresa_slug": emp.slug}
+
+    # Verificar caducidad
     if _CADUCIDAD["fecha"]:
         hoy = date.today()
         if hoy > _CADUCIDAD["fecha"]:
             raise HTTPException(403, "Licencia vencida")
 
-    slug = data.get("empresa","").lower()
-    pwd  = data.get("password","")
-    emp  = db.query(Empresa).filter(Empresa.slug == slug).first()
+    emp = db.query(Empresa).filter(Empresa.slug == slug).first()
     if not emp or emp.password != pwd:
         raise HTTPException(401, "Empresa o contraseña incorrecta")
     return {"ok": True, "empresa_id": emp.id, "empresa_nombre": emp.nombre, "empresa_slug": emp.slug}
