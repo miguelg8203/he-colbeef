@@ -5,7 +5,8 @@ Reforma Ley 2101 aplicada desde el 15 de julio de 2026
 import math
 from datetime import date, timedelta
 
-REFORMA = date(2026, 7, 15)  # Fecha de corte nueva reforma
+REFORMA     = date(2026, 7, 15)  # Jornada 7h + nuevas reglas HE
+REFORMA_RFD = date(2026, 7,  1)  # RFD cambia a 0.90
 
 def to_min(t):
     if not t: return 0
@@ -340,8 +341,26 @@ def calcular_periodo(year,month,registros,cfg,obs_map):
 
 FACTORES={"hed":1.25,"hen":1.75,"rno":0.35,"hefd":2.05,"hefn":2.55,"rfd":0.80,"rfn":1.15}
 
-def calcular_valores(sueldo, horas_sem, subtotales, factores=None):
-    jornada_mensual=round((horas_sem/6)*30)
+def get_factores_fecha(fecha, factores_config=None):
+    """Retorna factores ajustados según fecha de vigencia."""
+    f = dict(factores_config) if factores_config else dict(FACTORES)
+    # RFD: 0.80 antes del 01 jul 2026, 0.90 desde el 01 jul 2026
+    if fecha < REFORMA_RFD:
+        f["rfd"] = 0.80
+    else:
+        f["rfd"] = factores_config.get("rfd", 0.90) if factores_config else 0.90
+    return f
+
+def get_horas_sem_fecha(fecha, horas_sem_config):
+    """Retorna horas semanales según fecha de vigencia."""
+    if fecha >= REFORMA:
+        return 42.0
+    return horas_sem_config
+
+def calcular_valores(sueldo, horas_sem, subtotales, factores=None, fecha=None):
+    # Si hay fecha, aplicar horas_sem históricas
+    hs = get_horas_sem_fecha(fecha, horas_sem) if fecha else horas_sem
+    jornada_mensual=round((hs/6)*30)
     vh=sueldo/jornada_mensual; res={}; neto=0.0
     f_map = factores if factores else FACTORES
     for col, f in FACTORES.items():
