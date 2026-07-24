@@ -136,7 +136,11 @@ def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db
     for tec in tecs:
         calc = calcular_periodo_multi(year, month, _regs(tec.id,year,month,db), cfg, obs)
         sub  = calc["subtotales"]
-        vals = calcular_valores(tec.sueldo, cfg["horas_sem"], sub, factores)
+        # Fecha de inicio del periodo para factores históricos
+        from calculos import get_factores_fecha, get_horas_sem_fecha
+        factores_hist = get_factores_fecha(inicio_periodo, factores)
+        horas_hist = get_horas_sem_fecha(inicio_periodo, cfg["horas_sem"])
+        vals = calcular_valores(tec.sueldo, horas_hist, sub, factores_hist, fecha=inicio_periodo)
         result.append({"id":tec.id,"nombre":tec.nombre,"cedula":tec.cedula,
                        "cargo":tec.cargo,"sueldo":tec.sueldo,**sub,**vals})
     return result
