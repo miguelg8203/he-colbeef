@@ -1,9 +1,11 @@
 """
 calculos.py - Lógica exacta del Excel HE Colbeef
+Reforma Ley 2101 aplicada desde el 15 de julio de 2026
 """
 import math
 from datetime import date, timedelta
 
+REFORMA = date(2026, 7, 15)  # Fecha de corte nueva reforma
 
 def to_min(t):
     if not t: return 0
@@ -23,7 +25,6 @@ def es_descanso_culto_semana(regs):
     return False
 
 def diasem(f): return f.weekday()+1
-
 def hn(t): return to_min(t)/1440.0
 
 
@@ -48,10 +49,13 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
     if trab_h<=0: return res
     res["horas_trab"]=round(trab_h,2); res["min_dia"]=round(trab_h*60)
 
+    # ¿Aplica nueva reforma?
+    es_reforma = fecha >= REFORMA
+
     # Caso especial: entrada diurna (antes de 14:00) con salida que cruza noche
     if not B and F < hn("14:00") and G_adj > hn("22:00") and dw not in [6,7]:
         fin_diurno = hn("19:00")
-        jornada_h = 8.0
+        jornada_h = 7.0 if es_reforma else 8.0
         horas_diurnas = (min(G_adj, fin_diurno) - F) * 24 - des_h
         hed = max(0, round(horas_diurnas - jornada_h, 1))
         res["hed"] = hed
@@ -66,7 +70,7 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             res["hed"] = round(res["hed"] + hed_post, 1)
         return res
 
-    # Verificar DESCANSO POR CULTO en el sábado de esta semana
+    # Verificar DESCANSO POR CULTO
     _culto = False
     if registros_todos:
         dow_actual = fecha.weekday()
@@ -81,10 +85,13 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         obs_sab = (reg_sab.get("observacion") or "").strip().upper()
         if obs_sab == "DESCANSO POR CULTO": _culto = True
 
+    # Jornada diaria
     if _culto and dw <= 4:
         _jornada = 9.0
     elif _culto and dw == 5:
         _jornada = 8.0
+    elif es_reforma:
+        _jornada = 7.0   # ← Nueva reforma: jornada 7h
     else:
         _jornada = 8.0
 
@@ -103,8 +110,27 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             res["hefd"] = round(max(0, (G_adj - (hn("06:00")+1)) * 24), 1)
             return res
 
+    # ─── REFORMA: turno 22:00→06:00 con nuevas reglas ───
+    if es_reforma and F == hn("22:00") and G_adj >= hn("06:00")+1 and dw not in [6]:
+        if dw == 7 and B:          # Domingo festivo
+            res["rfd"]  = 5.0
+            res["rfn"]  = 2.0
+            res["hefn"] = 1.0
+        elif dw == 7 and not B:    # Domingo normal
+            res["rfn"]  = 7.0
+            res["hefn"] = 1.0
+        elif B:                    # Día festivo (lun-sáb)
+            res["rfn"] = 2.0
+            res["rno"] = 5.0
+            res["hed"] = 1.0
+        else:                      # Día normal (lun-sáb)
+            res["rno"] = 7.0
+            res["hen"] = 1.0
+        return res
+
     _hen_set=False
     _rfn_set=False
+
     # HED
     if not B and entrada_s and salida_s:
         if dw==7: hed=0.0
@@ -127,7 +153,6 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
                 else:
                     hed=-math.ceil(abs(diff)) if diff<0 else max(0,diff)
             elif F<hn("14:00"):
-                # Entrada genérica entre 06:00 y 14:00 en sábado
                 jornada_sab=4.0
                 g_cap=min(G_adj,hn("19:00"))
                 diff=round((g_cap-F)*24-jornada_sab-des_h,4)
@@ -171,22 +196,25 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
             for k in ["hed","hen","hefd","hefn","rfd","rfn","horas_trab"]: res[k]=round(res[k],1)
             return res
         if dw==5 and F==hn("22:00") and not B:
-            dom_fecha = fecha - timedelta(days=5)
-            reg_dom=(registros_todos or {}).get(dom_fecha,{})
-            if not reg_dom and registros_todos:
-                reg_dom=registros_todos.get(dom_fecha.isoformat(),{})
-            if isinstance(reg_dom, list): reg_dom = reg_dom[0] if reg_dom else {}
-            dom_entrada=reg_dom.get("entrada","")
-            if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
-                rno=4.0; res["hen"]=4.0
+            if es_reforma:
+                # Nueva reforma: viernes ya no depende del domingo → 7 RNO + 1 HEN
+                rno = 7.0; res["hen"] = 1.0
             else:
-                rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
+                dom_fecha = fecha - timedelta(days=5)
+                reg_dom=(registros_todos or {}).get(dom_fecha,{})
+                if not reg_dom and registros_todos:
+                    reg_dom=registros_todos.get(dom_fecha.isoformat(),{})
+                if isinstance(reg_dom, list): reg_dom = reg_dom[0] if reg_dom else {}
+                dom_entrada=reg_dom.get("entrada","")
+                if dom_entrada and to_dec(dom_entrada)==hn("22:00"):
+                    rno=4.0; res["hen"]=4.0
+                else:
+                    rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
         elif dw==5 and F==hn("22:00") and B:
             rno=max(0,(min(G_adj,hn("06:00")+1)-1)*24)
         elif dw==6 and F==hn("22:00"): rno=max(0,(min(G_adj,1.0)-hn("22:00"))*24)
         elif dw==6: rno=0.0
         elif dw==7 and F==hn("22:00"):
-            # Verificar si el lunes siguiente es festivo
             _lun_fest = False
             if registros_todos:
                 sig_fecha = fecha + timedelta(days=1)
@@ -206,18 +234,26 @@ def calcular_fila(fecha, registro, obs_map, registros_todos=None):
         elif F<hn("14:00"): rno=0.0
         elif hn("14:00")<=F<hn("22:00"):
             if G_adj > 1.0:
-                # Cruza medianoche: RNO = 22:00→06:00
                 rno = max(0, (min(G_adj, hn("06:00")+1) - hn("22:00")) * 24)
                 if G_adj > hn("06:00")+1:
                     res["hen"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
                 if G_adj > hn("06:00")+1:
                     res["hed"] = round((G_adj - (hn("06:00")+1)) * 24, 1)
             elif G_adj > hn("22:00"):
-                # Sale después de 22:00 pero antes de medianoche → RNO + HEN
-                rno = max(0, (hn("22:00") - hn("19:00")) * 24)
-                res["hen"] = round((G_adj - hn("22:00")) * 24, 1)
+                # Nueva reforma: 14:00→22:xx → RNO=2, HEN=1
+                if es_reforma:
+                    rno = 2.0
+                    res["hen"] = round((G_adj - hn("22:00")) * 24, 1)
+                else:
+                    rno = max(0, (hn("22:00") - hn("19:00")) * 24)
+                    res["hen"] = round((G_adj - hn("22:00")) * 24, 1)
             else:
-                rno = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
+                # 14:00→22:00 exacto
+                if es_reforma:
+                    rno = 2.0
+                    res["hen"] = 1.0
+                else:
+                    rno = max(0, (min(G_adj, hn("22:00")) - hn("19:00")) * 24)
         else: rno=max(0,(min(G_adj,hn("06:00")+1)-hn("22:00"))*24)
         res["rno"]=round(max(0,rno),1)
 
