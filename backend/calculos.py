@@ -193,11 +193,14 @@ def _calcular_reforma(fecha, F, G_adj, trab_h, des_h, dw, B, registros_todos, _c
                 res["hen"] = round((G_adj - fin_jornada) * 24, 1)
 
         elif F >= hn("22:00"):
-            # Noche: 7 RNO + 1 HEN
-            fin_jornada = F + JORNADA/24
+            # Noche: 7 RNO + 1 HEN + HED si sale después de 06:00
+            fin_jornada = F + JORNADA/24  # 05:00
             res["rno"] = round(max(0, (min(G_adj, fin_jornada) - F) * 24), 1)
+            hen_end = hn("06:00") + 1  # 06:00 siguiente día
             if G_adj > fin_jornada:
-                res["hen"] = round((G_adj - fin_jornada) * 24, 1)
+                res["hen"] = round(max(0, (min(G_adj, hen_end) - fin_jornada) * 24), 1)
+            if G_adj > hen_end:
+                res["hed"] = round((G_adj - hen_end) * 24, 1)
 
         elif F < hn("06:00"):
             # Entrada antes de 06:00 → diurno con HEN pre-06:00
