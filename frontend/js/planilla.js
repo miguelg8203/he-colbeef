@@ -1,27 +1,5 @@
 const PLAN = {
   data: null,
-  heDesbloqueado: false,
-
-  toggleHE() {
-    if(!this.heDesbloqueado) {
-      const clave = prompt("Clave para editar HE:");
-      if(clave !== "1234") { UI.toast("Clave incorrecta","err"); return; }
-      this.heDesbloqueado = true;
-    } else {
-      this.heDesbloqueado = false;
-    }
-    const btn = document.getElementById("btn-editar-he");
-    if(btn) {
-      btn.textContent = this.heDesbloqueado ? "🔒 Bloquear HE" : "🔓 Editar HE";
-      btn.style.borderColor = this.heDesbloqueado ? "#cc0000" : "";
-      btn.style.color = this.heDesbloqueado ? "#cc0000" : "";
-    }
-    document.querySelectorAll(".he-editable").forEach(inp => {
-      inp.readOnly = !this.heDesbloqueado;
-      inp.style.background = this.heDesbloqueado ? "" : "var(--bg2)";
-      inp.style.cursor = this.heDesbloqueado ? "text" : "default";
-    });
-  },
 
   initSelects() {
     const sel = document.getElementById("plan-tec-select");
@@ -62,7 +40,6 @@ const PLAN = {
       document.getElementById("plan-empty").style.display="block";
       document.getElementById("plan-table-wrap").style.display="none";
       document.getElementById("btn-pdf-tec").style.display="none";
-      document.getElementById("btn-editar-he").style.display="none";
       return;
     }
     STATE.planTecId = +tecId;
@@ -76,43 +53,19 @@ const PLAN = {
       document.getElementById("plan-empty").style.display="none";
       document.getElementById("plan-table-wrap").style.display="block";
       document.getElementById("btn-pdf-tec").style.display="inline-block";
-      document.getElementById("btn-editar-he").style.display="inline-block";
     } catch(e) { UI.toast("Error al cargar planilla","err"); }
   },
 
-  _horaList() {
+  _horaOpts(sel) {
     const horas = [];
     for(let h=1;h<=24;h++){
       horas.push(`${String(h).padStart(2,'0')}:00`);
       if(h<24) horas.push(`${String(h).padStart(2,'0')}:30`);
     }
-    return horas;
-  },
-
-  _horaOpts(sel) {
-    const horas = this._horaList();
     return '<option value=""></option>' + horas.map(h=>`<option value="${h}"${sel===h?' selected':''}>${h}</option>`).join('');
   },
 
-  _saveHora(fecha, turno, field, value) {
-    let v = value.trim();
-    if(/^\d{4}$/.test(v)) v = v.slice(0,2)+':'+v.slice(2);
-    if(/^\d{1,2}$/.test(v)) v = v.padStart(2,'0')+':00';
-    const m = v.match(/^(\d{2}):(\d{2})$/);
-    if(v && (!m || +m[1]>24 || +m[2]>59)) {
-      UI.toast("Hora inválida. Use formato HH:MM","err"); return;
-    }
-    this.saveField(fecha, turno, field, v);
-  },
-
   render() {
-    if(!document.getElementById("hora-list")) {
-      const dl = document.createElement("datalist");
-      dl.id = "hora-list";
-      dl.innerHTML = this._horaList().map(h=>`<option value="${h}">`).join('');
-      document.body.appendChild(dl);
-    }
-
     const body = document.getElementById("plan-body");
     const foot = document.getElementById("plan-foot");
     const obs  = STATE.observaciones;
@@ -156,35 +109,20 @@ const PLAN = {
           }
 
           html+=`
-          <td><input type="text" value="${reg.entrada||''}" placeholder="HH:MM" maxlength="5"
-            list="hora-list"
-            style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
-            onfocus="this.select()"
-            onblur="PLAN._saveHora('${fecha}',${turno},'entrada',this.value)"
-            onkeydown="if(event.key==='Enter'){this.blur()}"
-          ></td>
-          <td><input type="text" value="${reg.salida||''}" placeholder="HH:MM" maxlength="5"
-            list="hora-list"
-            style="width:72px;padding:2px 4px;font-size:11px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:1px;"
-            onfocus="this.select()"
-            onblur="PLAN._saveHora('${fecha}',${turno},'salida',this.value)"
-            onkeydown="if(event.key==='Enter'){this.blur()}"
-          ></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'entrada',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.entrada||'')}</select></td>
+          <td><select onchange="PLAN.saveField('${fecha}',${turno},'salida',this.value)" style="width:82px;padding:2px 3px;font-size:11px;">${PLAN._horaOpts(reg.salida||'')}</select></td>
           <td><input type="number" value="${reg.descanso?(reg.descanso/60).toFixed(1):''}" min="0" max="3" step="0.5" placeholder="0"
             onchange="PLAN.saveField('${fecha}',${turno},'descanso',+this.value*60)"></td>
           <td><select onchange="PLAN.saveField('${fecha}',${turno},'observacion',this.value)">${obsOpts
             .replace(`value="${reg.observacion||""}"`,`value="${reg.observacion||""}" selected`)}</select></td>
           <td class="he-val">${fmt(res.horas_trab)||""}</td>
           <td class="ot-cell"></td>
-          ${['hed','hen','rno','hefd','hefn','rfd','rfn'].map(col=>`
+          ${['hed','hen','rno','hefd','hefn','rfd','rfn','hrfd','hrfn'].map(col=>`
             <td class="he-val">
-              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1"
-                class="he-editable"
-                ${PLAN.heDesbloqueado?'':'readonly'}
+              <input type="number" value="${reg[col]?fmt(reg[col]):res[col]>0?fmt(res[col]):''}" min="-24" max="24" step="0.1" readonly
                 style="width:52px;padding:2px 4px;font-size:11px;text-align:center;
                 color:${(reg[col]||res[col])>0?'#008855':(reg[col]||res[col])<0?'#cc0000':'inherit'};
-                background:${PLAN.heDesbloqueado?'':'var(--bg2)'};cursor:${PLAN.heDesbloqueado?'text':'default'};"
-                onchange="PLAN.saveHE('${fecha}',${turno},'${col}',+this.value)">
+                background:var(--bg2);cursor:default;">
             </td>`).join('')}`;
 
           if(turno>1) {
@@ -219,7 +157,8 @@ const PLAN = {
       <td class="he-val">${fmt(sub.hed)}</td><td class="he-val">${fmt(sub.hen)}</td>
       <td class="he-val">${fmt(sub.rno)}</td><td class="he-val">${fmt(sub.hefd)}</td>
       <td class="he-val">${fmt(sub.hefn)}</td><td class="he-val">${fmt(sub.rfd)}</td>
-      <td class="he-val">${fmt(sub.rfn)}</td><td></td>
+      <td class="he-val">${fmt(sub.rfn)}</td><td class="he-val">${fmt(sub.hrfd)}</td>
+      <td class="he-val">${fmt(sub.hrfn)}</td><td></td>
     </tr>`;
   },
 
@@ -252,7 +191,6 @@ const PLAN = {
     const tecId=STATE.planTecId; if(!tecId) return;
     try {
       await API.post(`/registros/${tecId}/manual`,{fecha,turno,campo,valor});
-      await this.cargar();
     } catch(e){UI.toast("Error al guardar HE","err");}
   },
 
