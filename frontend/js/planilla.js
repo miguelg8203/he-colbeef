@@ -53,6 +53,7 @@ const PLAN = {
       document.getElementById("plan-empty").style.display="none";
       document.getElementById("plan-table-wrap").style.display="block";
       document.getElementById("btn-pdf-tec").style.display="inline-block";
+      document.getElementById("btn-editar-he").style.display="inline-block";
     } catch(e) { UI.toast("Error al cargar planilla","err"); }
   },
 
