@@ -1,17 +1,24 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db, Registro, Configuracion, Observacion, Tecnico
-from calculos import calcular_fila, calcular_valores, get_lunes
+import calculos as calc_mod
+calcular_fila = calc_mod.calcular_fila
+calcular_valores = calc_mod.calcular_valores
+get_factores_fecha = calc_mod.get_factores_fecha
+get_horas_sem_fecha = calc_mod.get_horas_sem_fecha
 from datetime import date, timedelta
 
 router = APIRouter(prefix="/calculos", tags=["calculos"])
+
+COLS_HE = ["hed","hen","rno","hefd","hefn","rfd","rfn","hrfd","hrfn"]
 
 def _cfg(empresa_id, db):
     c = db.query(Configuracion).filter(Configuracion.empresa_id==empresa_id).first()
     if not c: return {
         "horas_sem":44.0,"inicio_diurno":"06:00","fin_diurno":"19:00",
         "factor_hed":1.25,"factor_hen":1.75,"factor_rno":0.35,
-        "factor_hefd":2.05,"factor_hefn":2.55,"factor_rfd":0.80,"factor_rfn":1.15
+        "factor_hefd":2.05,"factor_hefn":2.55,"factor_rfd":0.80,"factor_rfn":1.15,
+        "factor_hrfd":0.90,"factor_hrfn":1.15,
     }
     return {
         "horas_sem":c.horas_sem,"inicio_diurno":c.inicio_diurno,"fin_diurno":c.fin_diurno,
@@ -19,6 +26,8 @@ def _cfg(empresa_id, db):
         "factor_rno":c.factor_rno or 0.35,"factor_hefd":c.factor_hefd or 2.05,
         "factor_hefn":c.factor_hefn or 2.55,"factor_rfd":c.factor_rfd or 0.80,
         "factor_rfn":c.factor_rfn or 1.15,
+        "factor_hrfd":getattr(c,"factor_hrfd",None) or 0.90,
+        "factor_hrfn":getattr(c,"factor_hrfn",None) or 1.15,
     }
 
 def _obs(empresa_id, db):
@@ -43,7 +52,9 @@ def _regs(tecnico_id, year, month, db):
             "entrada":r.entrada,"salida":r.salida,"descanso":r.descanso,
             "es_festivo":r.es_festivo,"observacion":r.observacion,
             "hed":r.hed,"hen":r.hen,"rno":r.rno,
-            "hefd":r.hefd,"hefn":r.hefn,"rfd":r.rfd,"rfn":r.rfn
+            "hefd":r.hefd,"hefn":r.hefn,"rfd":r.rfd,"rfn":r.rfn,
+            "hrfd":getattr(r,"hrfd",0.0) or 0.0,
+            "hrfn":getattr(r,"hrfn",0.0) or 0.0,
         }
         if r.fecha not in result:
             result[r.fecha] = []
@@ -60,18 +71,14 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
     dias = []
     d = inicio
     while d <= fin:
-        dias.append(d)
-        d += timedelta(days=1)
+        dias.append(d); d += timedelta(days=1)
     semanas = {}
     for d in dias:
         dow = d.weekday()
         dom = d if dow == 6 else d - timedelta(days=dow+1)
         if dom not in semanas: semanas[dom] = []
         semanas[dom].append(d)
-    registros_simple = {}
-    for fecha, regs in registros_multi.items():
-        registros_simple[fecha] = regs[0] if regs else {}
-    cols_he = ["hed","hen","rno","hefd","hefn","rfd","rfn"]
+    registros_simple = {fecha: regs[0] if regs else {} for fecha, regs in registros_multi.items()}
     semanas_result = []
     for dom in sorted(semanas.keys()):
         dias_sem = semanas[dom]
@@ -83,9 +90,9 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
             filas_dia = []
             for reg in turnos:
                 res = calcular_fila(fecha, reg, obs_map, registros_todos=registros_simple)
-                tiene_manual = any(reg.get(c, 0) for c in cols_he)
+                tiene_manual = any(reg.get(c, 0) for c in COLS_HE)
                 if tiene_manual:
-                    for c in cols_he:
+                    for c in COLS_HE:
                         val_bd = reg.get(c, 0) or 0.0
                         if val_bd != 0:
                             res[c] = val_bd
@@ -99,12 +106,14 @@ def calcular_periodo_multi(year, month, registros_multi, cfg, obs_map):
         ot_sem = round(min_acum/60 - cfg["horas_sem"], 1)
         horas_sem = round(min_acum/60, 1)
         semanas_result.append({"lunes": dom, "rows": rows, "ot_semana": ot_sem, "horas_semana": horas_sem})
-    sub = dict(hed=0.0, hen=0.0, rno=0.0, hefd=0.0, hefn=0.0, rfd=0.0, rfn=0.0, horas_total=0.0, ot_total=0.0)
+    sub = {c: 0.0 for c in COLS_HE}
+    sub.update({"horas_total":0.0,"ot_total":0.0})
     for sem in semanas_result:
         sub["ot_total"] += sem["ot_semana"]
         sub["horas_total"] += sem["horas_semana"]
         for row in sem["rows"]:
-            for col in cols_he: sub[col] += row["resultado"][col]
+            for col in COLS_HE:
+                sub[col] += row["resultado"].get(col, 0)
     for k in sub: sub[k] = round(sub[k], 1)
     return {"semanas": semanas_result, "subtotales": sub,
             "dias": [d.isoformat() for d in dias],
@@ -119,27 +128,19 @@ def periodo(tecnico_id: int, year: int, month: int, empresa_id: int, db: Session
 @router.get("/resumen/{year}/{month}")
 def resumen(year: int, month: int, empresa_id: int, db: Session = Depends(get_db)):
     cfg = _cfg(empresa_id,db); obs = _obs(empresa_id,db)
-    # Factores desde BD
-    factores = {
-        "hed": cfg["factor_hed"], "hen": cfg["factor_hen"], "rno": cfg["factor_rno"],
-        "hefd": cfg["factor_hefd"], "hefn": cfg["factor_hefn"],
-        "rfd": cfg["factor_rfd"], "rfn": cfg["factor_rfn"],
-    }
+    factores = {k.replace("factor_",""):v for k,v in cfg.items() if k.startswith("factor_")}
     inicio_periodo = date(year, month, 21)
     tecs = db.query(Tecnico).filter(
         Tecnico.empresa_id==empresa_id
     ).filter(
-        (Tecnico.activo==True) |
-        (Tecnico.fecha_retiro >= inicio_periodo)
+        (Tecnico.activo==True) | (Tecnico.fecha_retiro >= inicio_periodo)
     ).order_by(Tecnico.nombre).all()
     result = []
     for tec in tecs:
         calc = calcular_periodo_multi(year, month, _regs(tec.id,year,month,db), cfg, obs)
         sub  = calc["subtotales"]
-        # Fecha de inicio del periodo para factores históricos
-        from calculos import get_factores_fecha, get_horas_sem_fecha
         factores_hist = get_factores_fecha(inicio_periodo, factores)
-        horas_hist = get_horas_sem_fecha(inicio_periodo, cfg["horas_sem"])
+        horas_hist    = get_horas_sem_fecha(inicio_periodo, cfg["horas_sem"])
         vals = calcular_valores(tec.sueldo, horas_hist, sub, factores_hist, fecha=inicio_periodo)
         result.append({"id":tec.id,"nombre":tec.nombre,"cedula":tec.cedula,
                        "cargo":tec.cargo,"sueldo":tec.sueldo,**sub,**vals})
@@ -159,21 +160,14 @@ def reporte_observaciones(year: int, month: int, empresa_id: int, db: Session = 
     for tec in tecs:
         rows = db.query(Registro).filter(
             Registro.tecnico_id==tec.id,
-            Registro.fecha>=inicio,
-            Registro.fecha<=fin,
-            Registro.observacion != None,
-            Registro.observacion != ""
+            Registro.fecha>=inicio, Registro.fecha<=fin,
+            Registro.observacion != None, Registro.observacion != ""
         ).all()
         obs_count = {}
         for r in rows:
             obs = (r.observacion or "").strip().upper()
-            if obs:
-                obs_count[obs] = obs_count.get(obs, 0) + 1
+            if obs: obs_count[obs] = obs_count.get(obs, 0) + 1
         if obs_count:
-            result.append({
-                "id": tec.id,
-                "nombre": tec.nombre,
-                "cargo": tec.cargo,
-                "obs": [{"tipo": k, "dias": v} for k,v in sorted(obs_count.items())]
-            })
+            result.append({"id":tec.id,"nombre":tec.nombre,"cargo":tec.cargo,
+                           "obs":[{"tipo":k,"dias":v} for k,v in sorted(obs_count.items())]})
     return result
