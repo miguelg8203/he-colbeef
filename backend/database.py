@@ -37,6 +37,8 @@ class Configuracion(Base):
     factor_hefn   = Column(Float, default=2.55)
     factor_rfd    = Column(Float, default=0.80)
     factor_rfn    = Column(Float, default=1.15)
+    factor_hrfd   = Column(Float, default=0.90)
+    factor_hrfn   = Column(Float, default=1.15)
     empresa       = relationship("Empresa", back_populates="config")
 
 
@@ -83,6 +85,8 @@ class Registro(Base):
     hefn        = Column(Float, default=0.0)
     rfd         = Column(Float, default=0.0)
     rfn         = Column(Float, default=0.0)
+    hrfd        = Column(Float, default=0.0)
+    hrfn        = Column(Float, default=0.0)
     tecnico     = relationship("Tecnico", back_populates="registros")
 
 
