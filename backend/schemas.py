@@ -14,6 +14,8 @@ class ConfigIn(BaseModel):
     factor_hefn:   float = 2.55
     factor_rfd:    float = 0.80
     factor_rfn:    float = 1.15
+    factor_hrfd:   float = 0.90
+    factor_hrfn:   float = 1.15
 
 class ConfigOut(ConfigIn):
     id: int
@@ -63,4 +65,6 @@ class RegistroOut(RegistroIn):
     hefn:       float
     rfd:        float
     rfn:        float
+    hrfd:       float = 0.0
+    hrfn:       float = 0.0
     model_config = {"from_attributes": True}
