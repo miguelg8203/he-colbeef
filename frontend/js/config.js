@@ -15,6 +15,8 @@ const CFG = {
     document.getElementById("cfg-f-hefn").value = c.factor_hefn||2.55;
     document.getElementById("cfg-f-rfd").value  = c.factor_rfd||0.80;
     document.getElementById("cfg-f-rfn").value  = c.factor_rfn||1.15;
+    document.getElementById("cfg-f-hrfd").value = c.factor_hrfd||0.90;
+    document.getElementById("cfg-f-hrfn").value = c.factor_hrfn||1.15;
     this._updateHint();
     this.renderObs();
     this._cargarCaducidad();
@@ -60,6 +62,8 @@ const CFG = {
       factor_hefn:   +document.getElementById("cfg-f-hefn").value,
       factor_rfd:    +document.getElementById("cfg-f-rfd").value,
       factor_rfn:    +document.getElementById("cfg-f-rfn").value,
+      factor_hrfd:   +document.getElementById("cfg-f-hrfd").value,
+      factor_hrfn:   +document.getElementById("cfg-f-hrfn").value,
     };
     this._updateHint();
     try {
